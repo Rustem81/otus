@@ -1,0 +1,45 @@
+{
+  "name": "mexc-p2p-aggregator-frontend",
+  "version": "0.1.0",
+  "description": "MEXC P2P Aggregator Frontend - Quasar Vue.js",
+  "productName": "MEXC P2P Aggregator",
+  "author": "",
+  "private": true,
+  "scripts": {
+    "dev": "quasar dev",
+    "build": "quasar build",
+    "build:pwa": "quasar build -m pwa",
+    "lint": "eslint --ext .js,.ts,.vue ./",
+    "format": "prettier --write \"**/*.{js,ts,vue,scss,html,md,json}\" --ignore-path .gitignore",
+    "test": "echo \"No test specified\" && exit 0",
+    "api:generate": "orval --config ./orval.config.ts"
+  },
+  "dependencies": {
+    "@quasar/extras": "^1.16.9",
+    "axios": "^1.6.2",
+    "pinia": "^2.1.7",
+    "quasar": "^2.14.0",
+    "vue": "^3.3.10",
+    "vue-router": "^4.2.5",
+    "@tanstack/vue-query": "^5.13.0"
+  },
+  "devDependencies": {
+    "@quasar/app-vite": "^1.7.0",
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.14.0",
+    "@typescript-eslint/parser": "^6.14.0",
+    "autoprefixer": "^10.4.16",
+    "eslint": "^8.55.0",
+    "eslint-config-prettier": "^9.1.0",
+    "eslint-plugin-vue": "^9.19.2",
+    "orval": "^6.23.0",
+    "prettier": "^3.1.1",
+    "typescript": "^5.3.3",
+    "vite-plugin-checker": "^0.6.2"
+  },
+  "engines": {
+    "node": "^20 || ^18 || ^16",
+    "npm": ">= 6.13.4",
+    "yarn": ">= 1.21.1"
+  }
+}

@@ -1,0 +1,24 @@
+// app global css in SCSS form
+
+// Custom colors for risk scores
+.risk-low {
+  color: $positive;
+}
+
+.risk-medium {
+  color: $warning;
+}
+
+.risk-high {
+  color: $negative;
+}
+
+// Read-only badge styling
+.read-only-badge {
+  background: rgba($warning, 0.1);
+  border: 1px solid $warning;
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 0.75rem;
+  color: $warning;
+}

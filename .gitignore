@@ -1,0 +1,58 @@
+# Kiro
+# .kiro/
+.agents
+.qoder
+# Homework source materials (not for repo)
+H1/data/
+H1/task/
+H2/.kiro/specs/mexc-p2p-aggregator
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+wheels/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.hypothesis/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+
+# OS
+Thumbs.db
+Desktop.ini
+.DS_Store
+
+# Docker
+docker-compose.override.yml
+
+# Mypy / type checking
+.mypy_cache/
+.dmypy.json
+
+# Ruff / linting
+.ruff_cache/

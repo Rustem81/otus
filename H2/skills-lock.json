@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "skills": {
+    "fastapi-templates": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "computedHash": "1a5fe66bd2683afd1db9afdf37a25cd8b9195c369c98489333badf0406fc91b3"
+    },
+    "gof-design-patterns": {
+      "source": "markpitt/claude-skills",
+      "sourceType": "github",
+      "computedHash": "746cdade0ce1fa6b5a16573cd801423825035e50516ec8c4c68f8aaff3b38bd9"
+    },
+    "gof-patterns": {
+      "source": "grndlvl/software-patterns",
+      "sourceType": "github",
+      "computedHash": "d8bdbb7fd273da67fd6d9328fd983392f502dc55e7af12a74782d982f4c1487a"
+    },
+    "orval": {
+      "source": "orval-labs/orval",
+      "sourceType": "github",
+      "computedHash": "f843a346b46ef027a50348c38794ebf839db927081ea6ba234a22c49879a0093"
+    },
+    "quasar-skilld": {
+      "source": "harlan-zw/vue-ecosystem-skills",
+      "sourceType": "github",
+      "computedHash": "b240ba2c7b597bb3cc1950e0e203caf4faa9a74a33a3424c8fb3f64343c64aaa"
+    }
+  }
+}
