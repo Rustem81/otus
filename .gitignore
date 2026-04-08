@@ -6,7 +6,7 @@
 H1/data/
 H1/task/
 H2/.kiro/specs/mexc-p2p-aggregator
-
+H3/task
 # Python
 __pycache__/
 *.py[cod]
