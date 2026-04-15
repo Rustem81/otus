@@ -7,6 +7,7 @@ interface User {
   email: string;
   role: 'USER' | 'ADMIN';
   is_verified: boolean;
+  onboarding_completed: boolean;
 }
 
 interface LoginCredentials {
@@ -41,6 +42,8 @@ export const useAuthStore = defineStore('auth', () => {
       if (response.data.access_token) {
         localStorage.setItem('access_token', response.data.access_token);
       }
+      // Persist onboarding status for router guard
+      localStorage.setItem('onboarding_completed', String(response.data.user.onboarding_completed ?? true));
       return true;
     } catch (err: any) {
       error.value = err.response?.data?.detail || 'Ошибка входа';
@@ -72,6 +75,7 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       user.value = null;
       localStorage.removeItem('access_token');
+      localStorage.removeItem('onboarding_completed');
     }
   }
 
@@ -79,6 +83,7 @@ export const useAuthStore = defineStore('auth', () => {
     try {
       const response = await api.get('/auth/me');
       user.value = response.data;
+      localStorage.setItem('onboarding_completed', String(response.data.onboarding_completed ?? true));
       return true;
     } catch {
       user.value = null;

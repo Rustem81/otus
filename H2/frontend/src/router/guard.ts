@@ -3,9 +3,19 @@ import type { NavigationGuardNext, RouteLocationNormalized } from 'vue-router';
 // Pages that don't require authentication
 const publicPages = new Set(['/login', '/']);
 
-// Simple auth check using cookie
+// Simple auth check using cookie or localStorage token
 function hasAuthCookie(): boolean {
-  return document.cookie.includes('session_token=');
+  return document.cookie.includes('session_token=') || !!localStorage.getItem('access_token');
+}
+
+// Check if onboarding is completed (stored after login/fetchUser)
+function isOnboardingCompleted(): boolean {
+  try {
+    const raw = localStorage.getItem('onboarding_completed');
+    return raw === 'true';
+  } catch {
+    return true; // Default to true to avoid redirect loops
+  }
 }
 
 export async function authGuard(
@@ -28,6 +38,11 @@ export async function authGuard(
   // Already authenticated and trying to access login
   if (isAuthenticated && to.path === '/login') {
     return next('/');
+  }
+
+  // Redirect to onboarding if not completed (skip for onboarding page itself and public pages)
+  if (isAuthenticated && !isOnboardingCompleted() && to.path !== '/onboarding' && !isPublicPage) {
+    return next('/onboarding');
   }
 
   // Admin check - will be handled by component or API

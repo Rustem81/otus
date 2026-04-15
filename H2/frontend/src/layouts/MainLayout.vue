@@ -48,6 +48,20 @@
           <q-item-section>Профиль</q-item-section>
         </q-item>
 
+        <q-item to="/history" clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="history" />
+          </q-item-section>
+          <q-item-section>История</q-item-section>
+        </q-item>
+
+        <q-item to="/blacklist" clickable v-ripple>
+          <q-item-section avatar>
+            <q-icon name="block" />
+          </q-item-section>
+          <q-item-section>Чёрный список</q-item-section>
+        </q-item>
+
         <q-separator />
 
         <q-item to="/admin" clickable v-ripple v-if="isAdmin">

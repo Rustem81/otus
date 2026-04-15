@@ -1,79 +1,76 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import {
-  getAdvertisements,
-  type Advertisement,
-  type AdvertisementsFilters,
-} from 'src/api/advertisements';
+import { listAdvertisementsApiV1AdvertisementsGet } from 'src/api/advertisements/advertisements';
+import type {
+  AdvertisementResponse,
+  ListAdvertisementsApiV1AdvertisementsGetParams,
+  Direction,
+} from 'src/api/client.schemas';
+
+export type { AdvertisementResponse };
 
 export const useAdvertisementsStore = defineStore('advertisements', () => {
-  const advertisements = ref<Advertisement[]>([]);
+  const advertisements = ref<AdvertisementResponse[]>([]);
   const total = ref(0);
-  const page = ref(1);
-  const pageSize = ref(20);
+  const referencePrice = ref<number | null>(null);
+  const lastUpdated = ref<string | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  const filters = ref<AdvertisementsFilters>({});
+  const filters = ref<ListAdvertisementsApiV1AdvertisementsGetParams>({
+    currency: 'RUB',
+    direction: 'BUY' as Direction,
+    limit: 200,
+  });
 
-  const hasMore = computed(() => advertisements.value.length < total.value);
+  const hasMore = computed(() => false); // All loaded at once with limit=200
 
-  async function fetchAdvertisements(reset = true) {
+  async function fetchAdvertisements() {
     if (isLoading.value) return;
 
     isLoading.value = true;
     error.value = null;
 
     try {
-      const response = await getAdvertisements({
-        ...filters.value,
-        page: reset ? 1 : page.value,
-        page_size: pageSize.value,
-      });
-
-      if (reset) {
-        advertisements.value = response.items;
-        page.value = 1;
-      } else {
-        advertisements.value.push(...response.items);
-      }
-
+      const response = await listAdvertisementsApiV1AdvertisementsGet(filters.value);
+      advertisements.value = response.items;
       total.value = response.total;
+      referencePrice.value = response.reference_price ?? null;
+      lastUpdated.value = response.last_updated ?? null;
     } catch (e) {
-      error.value = e instanceof Error ? e.message : 'Failed to fetch advertisements';
+      error.value = e instanceof Error ? e.message : 'Ошибка загрузки объявлений';
     } finally {
       isLoading.value = false;
     }
   }
 
-  async function loadMore() {
-    if (!hasMore.value || isLoading.value) return;
-    page.value++;
-    await fetchAdvertisements(false);
+  function setFilters(newFilters: Partial<ListAdvertisementsApiV1AdvertisementsGetParams>) {
+    filters.value = { ...filters.value, ...newFilters };
+    fetchAdvertisements();
   }
 
-  function setFilters(newFilters: AdvertisementsFilters) {
-    filters.value = newFilters;
-    fetchAdvertisements(true);
+  function setDirection(dir: Direction) {
+    filters.value.direction = dir;
+    fetchAdvertisements();
   }
 
   function resetFilters() {
-    filters.value = {};
-    fetchAdvertisements(true);
+    filters.value = { currency: 'RUB', direction: filters.value.direction, limit: 200 };
+    fetchAdvertisements();
   }
 
   return {
     advertisements,
     total,
-    page,
-    pageSize,
+    referencePrice,
+    lastUpdated,
     isLoading,
     error,
     filters,
     hasMore,
     fetchAdvertisements,
-    loadMore,
     setFilters,
+    setDirection,
     resetFilters,
   };
 });

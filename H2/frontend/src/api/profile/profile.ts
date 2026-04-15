@@ -20,6 +20,8 @@ import type { MaybeRef } from "vue";
 import type {
   AppSchemasProfileErrorResponse,
   BanksListResponse,
+  HTTPValidationError,
+  OnboardingRequest,
   SavedFiltersResponse,
   SavedFiltersUpdate,
   TraderProfileResponse,
@@ -414,6 +416,89 @@ export const useUpdateSavedFiltersApiV1ProfileFiltersPut = <
 > => {
   const mutationOptions =
     getUpdateSavedFiltersApiV1ProfileFiltersPutMutationOptions(options);
+
+  return useMutation(mutationOptions);
+};
+/**
+ * Complete onboarding wizard.
+
+Sets up trader profile and marks onboarding as completed.
+ * @summary Complete Onboarding
+ */
+export const completeOnboardingApiV1ProfileOnboardingPost = (
+  onboardingRequest: MaybeRef<OnboardingRequest>,
+) => {
+  onboardingRequest = unref(onboardingRequest);
+
+  return customMutator<TraderProfileResponse>({
+    url: `/api/v1/profile/onboarding`,
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    data: onboardingRequest,
+  });
+};
+
+export const getCompleteOnboardingApiV1ProfileOnboardingPostMutationOptions = <
+  TError = AppSchemasProfileErrorResponse | HTTPValidationError,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>,
+    TError,
+    { data: OnboardingRequest },
+    TContext
+  >;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>,
+  TError,
+  { data: OnboardingRequest },
+  TContext
+> => {
+  const { mutation: mutationOptions } = options ?? {};
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>,
+    { data: OnboardingRequest }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return completeOnboardingApiV1ProfileOnboardingPost(data);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type CompleteOnboardingApiV1ProfileOnboardingPostMutationResult =
+  NonNullable<
+    Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>
+  >;
+export type CompleteOnboardingApiV1ProfileOnboardingPostMutationBody =
+  OnboardingRequest;
+export type CompleteOnboardingApiV1ProfileOnboardingPostMutationError =
+  | AppSchemasProfileErrorResponse
+  | HTTPValidationError;
+
+/**
+ * @summary Complete Onboarding
+ */
+export const useCompleteOnboardingApiV1ProfileOnboardingPost = <
+  TError = AppSchemasProfileErrorResponse | HTTPValidationError,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>,
+    TError,
+    { data: OnboardingRequest },
+    TContext
+  >;
+}): UseMutationReturnType<
+  Awaited<ReturnType<typeof completeOnboardingApiV1ProfileOnboardingPost>>,
+  TError,
+  { data: OnboardingRequest },
+  TContext
+> => {
+  const mutationOptions =
+    getCompleteOnboardingApiV1ProfileOnboardingPostMutationOptions(options);
 
   return useMutation(mutationOptions);
 };

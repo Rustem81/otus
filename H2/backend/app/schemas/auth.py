@@ -24,6 +24,7 @@ class UserResponse(BaseModel):
     email: str
     role: str
     is_verified: bool
+    onboarding_completed: bool
 
     model_config = {"from_attributes": True}
 

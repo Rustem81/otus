@@ -7,6 +7,8 @@ from app.models.merchant import Merchant
 from app.models.advertisement import Advertisement, Direction
 from app.models.polling_error import PollingError
 from app.models.saved_filters import SavedFilters
+from app.models.merchant_blacklist import MerchantBlacklist
+from app.models.view_history import ViewHistory
 
 __all__ = [
     "Base",
@@ -19,4 +21,6 @@ __all__ = [
     "Direction",
     "PollingError",
     "SavedFilters",
+    "MerchantBlacklist",
+    "ViewHistory",
 ]

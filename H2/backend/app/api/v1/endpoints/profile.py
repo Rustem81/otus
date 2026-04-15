@@ -11,6 +11,7 @@ from app.models.user import User
 from app.schemas.profile import (
     BanksListResponse,
     ErrorResponse,
+    OnboardingRequest,
     SavedFiltersResponse,
     SavedFiltersUpdate,
     TraderProfileResponse,
@@ -130,3 +131,40 @@ async def update_saved_filters(
     """
     filters = await profile_service.update_saved_filters(current_user.id, filters_data)
     return ProfileService.filters_to_response(filters)
+
+
+@router.post(
+    "/onboarding",
+    response_model=TraderProfileResponse,
+    dependencies=[require_user],
+    responses={
+        401: {"model": ErrorResponse, "description": "Not authenticated"},
+    },
+)
+async def complete_onboarding(
+    data: OnboardingRequest,
+    current_user: Annotated[User, Depends(get_current_active_user)],
+    profile_service: Annotated[ProfileService, Depends(get_profile_service)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> TraderProfileResponse:
+    """
+    Complete onboarding wizard.
+
+    Sets up trader profile and marks onboarding as completed.
+    """
+    # Update profile with onboarding data
+    update_data = TraderProfileUpdate(
+        payment_methods=data.payment_methods,
+        min_amount=data.min_amount,
+        max_amount=data.max_amount,
+        risk_profile=data.risk_profile,
+        commission_percent=data.commission_percent,
+        commission_fixed=data.commission_fixed,
+    )
+    profile = await profile_service.update_profile(current_user.id, update_data)
+
+    # Mark onboarding as completed
+    current_user.onboarding_completed = True
+    await db.commit()
+
+    return ProfileService.profile_to_response(profile)

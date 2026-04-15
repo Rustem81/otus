@@ -11,7 +11,7 @@ declare module '@vue/runtime-core' {
 }
 
 // Direct backend access - CORS enabled
-const baseURL = 'http://192.168.1.129:8000/api/v1';
+const baseURL = 'http://192.168.1.129:8000';
 
 const api = axios.create({
   baseURL,

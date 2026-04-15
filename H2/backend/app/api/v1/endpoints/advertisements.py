@@ -90,6 +90,13 @@ async def list_advertisements(
         limit=limit,
     )
 
+    # Filter out blacklisted merchants
+    from app.repositories.blacklist_repository import BlacklistRepository
+    blacklist_repo = BlacklistRepository(db)
+    blacklisted_ids = await blacklist_repo.get_blacklisted_merchant_ids(current_user.id)
+    if blacklisted_ids:
+        ads = [ad for ad in ads if ad.merchant_id not in blacklisted_ids]
+
     # Get reference price
     ref_price = None
     if direction:

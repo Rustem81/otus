@@ -39,5 +39,10 @@ class TraderProfile(Base):
     commission_fixed: Mapped[float | None] = mapped_column(
         Numeric(18, 2), nullable=True
     )
+    kyc_level: Mapped[str | None] = mapped_column(String(20), nullable=True)
+    country: Mapped[str | None] = mapped_column(String(10), default="RU", nullable=True)
+    kyc_limit_warning: Mapped[float | None] = mapped_column(
+        Numeric(18, 2), nullable=True
+    )
 
     user: Mapped[User] = relationship("User", back_populates="profile")

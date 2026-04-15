@@ -33,7 +33,7 @@ export const listAdvertisementsApiV1AdvertisementsGet = (
   params = unref(params);
 
   return customMutator<AdvertisementListResponse>({
-    url: `/api/v1/advertisements/`,
+    url: `/api/v1/advertisements`,
     method: "GET",
     params: unref(params),
     signal,

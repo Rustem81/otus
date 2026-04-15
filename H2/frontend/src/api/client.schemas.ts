@@ -15,6 +15,10 @@ export type ToggleSourceApiV1AdminSourcesSourceIdPutParams = {
   enabled: boolean;
 };
 
+export type RemoveFromBlacklistApiV1BlacklistMerchantIdDelete200 = {
+  [key: string]: unknown;
+};
+
 export type ListAdvertisementsApiV1AdvertisementsGetParams = {
   /**
    * Currency pair
@@ -74,6 +78,15 @@ export interface AppSchemasAuthErrorResponse {
   detail: string;
 }
 
+export interface ViewHistoryEntry {
+  advertisement_id: string;
+  viewed_at: string;
+}
+
+export interface ViewHistoryResponse {
+  items: ViewHistoryEntry[];
+}
+
 /**
  * Response schema for email verification.
  */
@@ -101,6 +114,7 @@ export interface UserResponse {
   email: string;
   id: string;
   is_verified: boolean;
+  onboarding_completed: boolean;
   role: string;
 }
 
@@ -132,7 +146,13 @@ export type TraderProfileUpdateMinAmount = number | null;
 
 export type TraderProfileUpdateMaxAmount = number | null;
 
+export type TraderProfileUpdateKycLimitWarning = number | null;
+
+export type TraderProfileUpdateKycLevel = string | null;
+
 export type TraderProfileUpdateCurrencyPair = string | null;
+
+export type TraderProfileUpdateCountry = string | null;
 
 export type TraderProfileUpdateCommissionPercent = number | null;
 
@@ -144,7 +164,10 @@ export type TraderProfileUpdateCommissionFixed = number | null;
 export interface TraderProfileUpdate {
   commission_fixed?: TraderProfileUpdateCommissionFixed;
   commission_percent?: TraderProfileUpdateCommissionPercent;
+  country?: TraderProfileUpdateCountry;
   currency_pair?: TraderProfileUpdateCurrencyPair;
+  kyc_level?: TraderProfileUpdateKycLevel;
+  kyc_limit_warning?: TraderProfileUpdateKycLimitWarning;
   max_amount?: TraderProfileUpdateMaxAmount;
   min_amount?: TraderProfileUpdateMinAmount;
   payment_methods?: TraderProfileUpdatePaymentMethods;
@@ -154,6 +177,12 @@ export interface TraderProfileUpdate {
 export type TraderProfileResponseMinAmount = number | null;
 
 export type TraderProfileResponseMaxAmount = number | null;
+
+export type TraderProfileResponseKycLimitWarning = number | null;
+
+export type TraderProfileResponseKycLevel = string | null;
+
+export type TraderProfileResponseCountry = string | null;
 
 export type TraderProfileResponseCommissionPercent = number | null;
 
@@ -165,8 +194,11 @@ export type TraderProfileResponseCommissionFixed = number | null;
 export interface TraderProfileResponse {
   commission_fixed?: TraderProfileResponseCommissionFixed;
   commission_percent?: TraderProfileResponseCommissionPercent;
+  country?: TraderProfileResponseCountry;
   currency_pair?: string;
   id: number;
+  kyc_level?: TraderProfileResponseKycLevel;
+  kyc_limit_warning?: TraderProfileResponseKycLimitWarning;
   max_amount?: TraderProfileResponseMaxAmount;
   min_amount?: TraderProfileResponseMinAmount;
   payment_methods?: string[];
@@ -234,6 +266,30 @@ export interface RegisterResponse {
   message: string;
 }
 
+export interface RecordViewRequest {
+  advertisement_id: string;
+}
+
+export type OnboardingRequestMinAmount = number | null;
+
+export type OnboardingRequestMaxAmount = number | null;
+
+export type OnboardingRequestCommissionPercent = number | null;
+
+export type OnboardingRequestCommissionFixed = number | null;
+
+/**
+ * Request schema for completing onboarding.
+ */
+export interface OnboardingRequest {
+  commission_fixed?: OnboardingRequestCommissionFixed;
+  commission_percent?: OnboardingRequestCommissionPercent;
+  max_amount?: OnboardingRequestMaxAmount;
+  min_amount?: OnboardingRequestMinAmount;
+  payment_methods?: string[];
+  risk_profile?: RiskProfile;
+}
+
 export type MonitoringResponseSourcesItem = { [key: string]: unknown };
 
 export type MonitoringResponseHourlyStats = { [key: string]: unknown };
@@ -267,6 +323,7 @@ export interface MerchantResponse {
  * Response schema for successful login.
  */
 export interface LoginResponse {
+  access_token: string;
   message?: string;
   user: UserResponse;
 }
@@ -293,6 +350,21 @@ export const Direction = {
   BUY: "BUY",
   SELL: "SELL",
 } as const;
+
+export type BlacklistEntryCreatedAt = string | null;
+
+export interface BlacklistEntry {
+  created_at?: BlacklistEntryCreatedAt;
+  merchant_id: string;
+}
+
+export interface BlacklistResponse {
+  items: BlacklistEntry[];
+}
+
+export interface BlacklistAddRequest {
+  merchant_id: string;
+}
 
 /**
  * Information about a payment method / bank.

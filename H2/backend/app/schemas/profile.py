@@ -39,6 +39,9 @@ class TraderProfileBase(BaseModel):
     risk_profile: RiskProfile = RiskProfile.MEDIUM
     commission_percent: float | None = None
     commission_fixed: float | None = None
+    kyc_level: str | None = None
+    country: str | None = "RU"
+    kyc_limit_warning: float | None = None
 
     @field_validator("max_amount")
     @classmethod
@@ -67,6 +70,9 @@ class TraderProfileUpdate(BaseModel):
     risk_profile: RiskProfile | None = None
     commission_percent: float | None = None
     commission_fixed: float | None = None
+    kyc_level: str | None = None
+    country: str | None = None
+    kyc_limit_warning: float | None = None
 
     @field_validator("max_amount")
     @classmethod
@@ -121,3 +127,19 @@ class ErrorResponse(BaseModel):
     """Error response schema."""
 
     detail: str
+
+
+# =============================================================================
+# Onboarding Schemas
+# =============================================================================
+
+
+class OnboardingRequest(BaseModel):
+    """Request schema for completing onboarding."""
+
+    payment_methods: list[str] = Field(default_factory=list)
+    min_amount: float | None = None
+    max_amount: float | None = None
+    risk_profile: RiskProfile = RiskProfile.MEDIUM
+    commission_percent: float | None = None
+    commission_fixed: float | None = None
