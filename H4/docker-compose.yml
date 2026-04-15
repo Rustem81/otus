@@ -1,0 +1,106 @@
+services:
+  # H4 React frontend
+  frontend:
+    build:
+      context: ./app
+      args:
+        # Inside Docker, API goes through nginx proxy (same origin)
+        VITE_API_URL: ""
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+
+  # H2 Backend (reused)
+  backend:
+    build:
+      context: ../H2/backend
+      target: development
+    ports:
+      - "8000:8000"
+    env_file:
+      - ../H2/.env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://mexc:mexc_secret@postgres:5432/mexc_p2p
+      - REDIS_URL=redis://redis:6379
+      - P2P_MOCK_BASE_URL=http://mock-server:8001/v1/api
+      - BACKEND_CORS_ORIGINS=http://localhost:3000,http://localhost:5173,http://localhost:9000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrations:
+        condition: service_completed_successfully
+      mock-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Database migrations
+  migrations:
+    build:
+      context: ../H2/backend
+      target: development
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://mexc:mexc_secret@postgres:5432/mexc_p2p
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: alembic upgrade head
+    restart: "no"
+
+  # Mock server
+  mock-server:
+    build:
+      context: ../H2/mock-server
+      target: development
+    ports:
+      - "8001:8001"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8001/v1/api/ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001
+
+  # PostgreSQL
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: mexc_p2p
+      POSTGRES_USER: mexc
+      POSTGRES_PASSWORD: mexc_secret
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mexc -d mexc_p2p"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # Redis
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  redis_data:

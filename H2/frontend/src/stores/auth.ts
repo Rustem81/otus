@@ -1,68 +1,52 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { api } from 'boot/axios';
-
-interface User {
-  id: string;
-  email: string;
-  role: 'USER' | 'ADMIN';
-  is_verified: boolean;
-  onboarding_completed: boolean;
-}
-
-interface LoginCredentials {
-  email: string;
-  password: string;
-}
-
-interface RegisterCredentials {
-  email: string;
-  password: string;
-}
+import {
+  loginApiV1AuthLoginPost,
+  registerApiV1AuthRegisterPost,
+  logoutApiV1AuthLogoutPost,
+  getCurrentUserInfoApiV1AuthMeGet,
+} from 'src/api/auth/auth';
+import type { UserResponse } from 'src/api/client.schemas';
 
 export const useAuthStore = defineStore('auth', () => {
-  // State
-  const user = ref<User | null>(null);
+  const user = ref<UserResponse | null>(null);
   const isLoading = ref(false);
   const error = ref<string | null>(null);
 
-  // Getters
   const isAuthenticated = computed(() => !!user.value);
   const isAdmin = computed(() => user.value?.role === 'ADMIN');
 
-  // Actions
-  async function login(credentials: LoginCredentials) {
+  async function login(credentials: { email: string; password: string }) {
     isLoading.value = true;
     error.value = null;
-
     try {
-      const response = await api.post('/auth/login', credentials);
-      user.value = response.data.user;
-      // Save token for MVP auth
-      if (response.data.access_token) {
-        localStorage.setItem('access_token', response.data.access_token);
+      const response = await loginApiV1AuthLoginPost(credentials);
+      user.value = response.user;
+      // Save token if returned (MVP bearer auth)
+      const resp = response as Record<string, unknown>;
+      if (resp.access_token) {
+        localStorage.setItem('access_token', resp.access_token as string);
       }
-      // Persist onboarding status for router guard
-      localStorage.setItem('onboarding_completed', String(response.data.user.onboarding_completed ?? true));
+      localStorage.setItem('onboarding_completed', String(user.value.onboarding_completed ?? true));
       return true;
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Ошибка входа';
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      error.value = e.response?.data?.detail || 'Ошибка входа';
       return false;
     } finally {
       isLoading.value = false;
     }
   }
 
-  async function register(credentials: RegisterCredentials) {
+  async function register(credentials: { email: string; password: string }) {
     isLoading.value = true;
     error.value = null;
-
     try {
-      const response = await api.post('/auth/register', credentials);
-      user.value = response.data.user;
+      await registerApiV1AuthRegisterPost(credentials);
       return true;
-    } catch (err: any) {
-      error.value = err.response?.data?.detail || 'Ошибка регистрации';
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { detail?: string } } };
+      error.value = e.response?.data?.detail || 'Ошибка регистрации';
       return false;
     } finally {
       isLoading.value = false;
@@ -71,7 +55,7 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function logout() {
     try {
-      await api.post('/auth/logout');
+      await logoutApiV1AuthLogoutPost();
     } finally {
       user.value = null;
       localStorage.removeItem('access_token');
@@ -81,9 +65,9 @@ export const useAuthStore = defineStore('auth', () => {
 
   async function fetchUser() {
     try {
-      const response = await api.get('/auth/me');
-      user.value = response.data;
-      localStorage.setItem('onboarding_completed', String(response.data.onboarding_completed ?? true));
+      const data = await getCurrentUserInfoApiV1AuthMeGet();
+      user.value = data;
+      localStorage.setItem('onboarding_completed', String(data.onboarding_completed ?? true));
       return true;
     } catch {
       user.value = null;
