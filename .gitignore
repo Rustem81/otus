@@ -11,12 +11,14 @@ H3/task
 H4/task
 H4/PLAN.md
 H4/app/node_modules
+H5/task/task.md
 # Python
 __pycache__/
 *.py[cod]
 *$py.class
 *.so
 MY
+lectures
 
 # Virtual environments
 venv/
