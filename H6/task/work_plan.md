@@ -24,7 +24,7 @@
 11. [Этап 6. Prometheus + Grafana](#этап-6-prometheus--grafana)
 12. [Этап 7. Uptime-мониторинг и Health Check](#этап-7-uptime-мониторинг-и-health-check)
 13. [Этап 8. Структурированное логирование](#этап-8-структурированное-логирование)
-14. [Этап 9. Деплой: Vercel + backend (monorepo)](#этап-9-деплой-vercel--backend-monorepo)
+14. [Этап 9. Деплой: Railway (все сервисы)](#этап-9-деплой-railway-все-сервисы)
 15. [Этап 10. Тестирование и документация](#этап-10-тестирование-и-документация)
 16. [Чеклист перед сдачей](#чеклист-перед-сдачей)
 
@@ -82,32 +82,33 @@ otus/                          ← корень: https://github.com/Rustem81/otu
 
 ### 2.2. Ansible — нужен ли?
 
-| Сценарий | Ansible | Что использовать вместо |
-|----------|---------|-------------------------|
-| Frontend на **Vercel**, backend на **Railway/Render** | **Не обязателен** | Настройки в UI + `vercel.json` + GitHub Actions |
-| Полный стек на **своём VPS** (Docker Compose) | **По желанию** | Ansible/playbook для установки Docker, копирования `H6/`, `docker compose up` |
-| Только CI (тесты без VPS) | Не нужен | GitHub Actions с `working-directory: H6/...` |
+| Сценарий | Нужен | Что использовать |
+|----------|-------|------------------|
+| Весь стек на **Railway** | **Нет** | Railway UI + GitHub Actions |
+| Полный стек на **своём VPS** | По желанию | Ansible playbook |
+| Только CI (тесты без деплоя) | Нет | GitHub Actions |
 
-**Рекомендация для H6:** Vercel (frontend) + Railway или Render (backend). Ansible имеет смысл, только если вы сознательно идёте на VPS — тогда playbook может лежать в `H6/deploy/ansible/` (опционально, не в обязательных требованиях ДЗ).
+**Решение для H6:** Весь стек на **Railway** (backend + frontend + PostgreSQL + Redis + mock-server). Ansible не нужен.
 
-### 2.3. Три способа деплоя frontend из `H6/frontend`
+### 2.3. Деплой из monorepo на Railway
 
-**Способ A — Vercel UI (проще для старта)**  
-Подключить репозиторий `Rustem81/otus`, указать **Root Directory** = `H6/frontend` (см. [Этап 9](#этап-9-деплой-vercel--backend-monorepo)).
+Railway поддерживает monorepo: для каждого сервиса указывается **Root Directory** и **Dockerfile path**.
 
-**Способ B — Vercel CLI из папки frontend**
+| Сервис | Root Directory | Dockerfile | Порт |
+|--------|---------------|------------|------|
+| frontend | `H6/frontend` | `Dockerfile` | 3000 |
+| backend | `H6/backend` | `Dockerfile` | 8000 |
+| mock-server | `H6/mock-server` | `Dockerfile` | 8001 |
+| PostgreSQL | — (managed plugin) | — | 5432 |
+| Redis | — (managed plugin) | — | 6379 |
 
-```bash
-cd H6/frontend
-npx vercel --prod
-```
+**Настройка в Railway UI:**
+1. New Project → Deploy from GitHub → `Rustem81/otus`
+2. Для каждого сервиса: Settings → Root Directory → `H6/backend` (и т.д.)
+3. Plugins: Add PostgreSQL, Add Redis
+4. Variables: задать DATABASE_URL, REDIS_URL и т.д. (Railway автоматически подставляет для plugins)
 
-**Способ C — GitHub Actions**  
-Job с `amondnet/vercel-action` или официальным Vercel Action, параметры:
-
-- `working-directory: H6/frontend`
-- `vercel-args: '--prod'`
-- секрет `VERCEL_TOKEN`
+**Автодеплой:** Railway деплоит при push в `main`. Watch Paths можно ограничить папкой `H6/`.
 
 ### 2.4. Path filters в CI (запуск только при изменениях H6)
 
@@ -128,13 +129,16 @@ on:
 
 ### 2.5. Переменные окружения: где задавать
 
-| Переменная | Локально | Vercel (frontend) | Railway/Render (backend) |
-|------------|----------|-------------------|--------------------------|
-| `VITE_API_URL` | `H6/frontend/.env` | Project → Settings → Environment Variables | — |
-| `VITE_YM_COUNTER_ID` | `.env` | Vercel env | — |
-| `VITE_SENTRY_DSN` | `.env` | Vercel env | — |
-| `DATABASE_URL`, `JWT_SECRET`, OAuth | `H6/.env` | — | Backend service env |
-| `GOOGLE_*`, `SENTRY_DSN_BACKEND` | `H6/.env` | — | Backend service env |
+| Переменная | Локально | Railway (backend) | Railway (frontend) |
+|------------|----------|-------------------|-------------------|
+| `VITE_API_URL` | `H6/frontend/.env` | — | Build-time variable |
+| `VITE_YM_COUNTER_ID` | `.env` | — | Build-time variable |
+| `VITE_SENTRY_DSN` | `.env` | — | Build-time variable |
+| `DATABASE_URL` | `H6/.env` | Auto from PostgreSQL plugin | — |
+| `REDIS_URL` | `H6/.env` | Auto from Redis plugin | — |
+| `SECRET_KEY`, `GOOGLE_*` | `H6/.env` | Service variables | — |
+| `SENTRY_DSN_BACKEND` | `H6/.env` | Service variables | — |
+| `P2P_MOCK_BASE_URL` | `H6/.env` | Internal URL mock-server | — |
 
 ---
 
@@ -169,7 +173,7 @@ on:
 |---------|------------------------|
 | Регистрация в сервисах | Google Cloud, GitHub, Sentry, Metrika, UptimeRobot, хостинг — нужны ваши учётные записи |
 | Секреты и ключи | Client ID/Secret, DSN, токены деплоя — в `.env` и GitHub Secrets, **не в git** |
-| Выбор хостинга и тарифов | Railway/Vercel/VPS — решение и оплата за вами |
+| Выбор хостинга и тарифов | Railway — решение и оплата за вами |
 | Ручное тестирование в браузере | OAuth flow, UI, Метрика «в реальном времени» |
 | Code review | Проверить сгенерированный код перед merge |
 | Сдача ДЗ | Ссылки на репозиторий и деплой на платформе курса |
@@ -193,15 +197,15 @@ on:
 | Этап | 👤 Разработчик | 🤖 С помощью AI |
 |------|----------------|-----------------|
 | **0. Подготовка** | Копирование H5→H6, `git checkout -b`, создание `.env` | Структура каталогов `monitoring/`, шаблон `.env.example` |
-| **1. CI/CD** | Репозиторий GitHub, Secrets, просмотр Actions, выбор Vercel/Railway | `ci.yml`, `deploy.yml`, исправление падающих job |
+| **1. CI/CD** | Репозиторий GitHub, Secrets, просмотр Actions | `ci.yml`, `deploy.yml`, исправление падающих job |
 | **2. Security** | Запуск `npm audit` / `pip-audit`, решение что обновлять | OWASP-аудит кода, черновик `security_audit.md`, патчи |
 | **3. OAuth2** | Google Console (проект, consent, Client ID, redirect URI), test users | Backend routes, миграция, кнопка на login, тесты |
-| **4. Яндекс.Метрика** | Регистрация на metrika.yandex.ru, счётчик, **настройка целей** в UI, проверка «В реальном времени», скриншот | `analytics.ts`, скрипт счётчика, `trackEvent`, `vercel.json` env |
+| **4. Яндекс.Метрика** | Регистрация на metrika.yandex.ru, счётчик, **настройка целей** в UI, проверка «В реальном времени», скриншот | `analytics.ts`, скрипт счётчика, `trackEvent`, Railway env |
 | **5. Sentry** | Регистрация sentry.io, копирование DSN, проверка Issues в UI | `sentry_sdk.init`, `@sentry/react`, ErrorBoundary, фильтр PII |
 | **6. Prometheus+Grafana** | `docker compose up`, открыть :9090/:3001, сменить пароль admin | instrumentator, custom metrics, `prometheus.yml`, dashboard JSON |
 | **7. Uptime** | Регистрация UptimeRobot, URL prod `/health`, email-алерты | Расширение `/health`, `/health/live` |
 | **8. Логи** | Сохранить sample логов для отчёта | structlog, middleware request_id, AI-анализ логов в доке |
-| **9. Деплой** | Регистрация Vercel, привязка `Rustem81/otus`, Root Directory `H6/frontend`, env, Railway backend | `vercel.json`, `h6-deploy.yml`, path filters, исправление сборки |
+| **9. Деплой** | Регистрация Railway, привязка `Rustem81/otus`, Root Directory для каждого сервиса, env | `h6-deploy.yml`, path filters, исправление сборки |
 | **10. Документация** | Финальная вычитка, скриншоты, публикация ссылок | Черновики MD, README, список промптов для отчёта |
 
 ### Как работать с AI на практике (рекомендуемый цикл)
@@ -292,7 +296,6 @@ otus/                              # https://github.com/Rustem81/otus
 └── H6/
     ├── backend/
     ├── frontend/
-    │   └── vercel.json
     ├── mock-server/
     ├── monitoring/
     │   ├── prometheus/prometheus.yml
@@ -314,7 +317,7 @@ otus/                              # https://github.com/Rustem81/otus
 
 - Создать/привязать репозиторий на GitHub, сделать `git push`
 - В **Settings → Secrets and variables → Actions** добавить все секреты деплоя
-- Зарегистрироваться на Vercel и/или Railway (или другом хостинге), создать проекты
+- Зарегистрироваться на Railway, создать проект
 - Открыть вкладку **Actions** после push — убедиться, что pipeline зелёный
 - При падении job — скопировать лог ошибки (для AI или ручного fix)
 - После merge в `main` — проверить, что prod URL открывается (`curl /health`)
@@ -328,7 +331,7 @@ otus/                              # https://github.com/Rustem81/otus
 - Подготовить фрагмент для `integration_documentation.md` (схема pipeline)
 
 **Пример промпта:**  
-> «Сгенерируй GitHub Actions для H6: backend FastAPI (ruff, pytest, pip-audit), frontend React Vite (eslint, vitest, npm audit). Отдельный deploy.yml на push в main: frontend Vercel, backend Railway.»
+> «Сгенерируй GitHub Actions для H6: backend FastAPI (ruff, pytest, pip-audit), frontend React Vite (eslint, vitest, npm audit). Отдельный deploy.yml на push в main: все сервисы на Railway.»
 
 ### 1.1. Репозиторий GitHub (у вас уже есть)
 
@@ -338,7 +341,7 @@ otus/                              # https://github.com/Rustem81/otus
 2. Работа в ветке: `git checkout -b feature/h6-integrations`  
 3. Коммиты только в `H6/` (+ workflows в `.github/workflows/`)  
 4. `git push -u origin feature/h6-integrations` → Pull Request в `main`  
-5. После merge — Actions и Vercel деплоят из `main`
+5. После merge — Actions и Railway деплоят из `main`
 
 ### 1.2. Файл `.github/workflows/h6-ci.yml` (в **корне** репозитория)
 
@@ -363,8 +366,8 @@ otus/                              # https://github.com/Rustem81/otus
 
 | Компонент | Платформа | Секреты в GitHub |
 |-----------|----------|------------------|
-| Frontend | Vercel / Netlify | `VERCEL_TOKEN`, `VITE_API_URL` |
-| Backend | Railway / Render / Fly.io | `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`, `GOOGLE_*`, `SENTRY_DSN_*` |
+| Frontend | Railway | `RAILWAY_TOKEN`, `VITE_API_URL` |
+| Backend | Railway | `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`, `GOOGLE_*`, `SENTRY_DSN_*` |
 
 **После деплоя:** smoke-test `curl https://<api>/health`.
 
@@ -374,8 +377,8 @@ otus/                              # https://github.com/Rustem81/otus
 
 - `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`
 - `SENTRY_DSN_BACKEND`, `SENTRY_DSN_FRONTEND`
-- `DATABASE_URL`, `REDIS_URL`, `JWT_SECRET`
-- Токены деплоя (Vercel/Railway)
+- `DATABASE_URL`, `REDIS_URL`, `SECRET_KEY`
+- `RAILWAY_TOKEN`
 
 ### 1.5. Проверка
 
@@ -597,8 +600,8 @@ CREATE UNIQUE INDEX ix_users_oauth ON users (oauth_provider, oauth_subject)
 
 - Пройти регистрацию и настройку счётчика (раздел 4.1) — **только в браузере**
 - Создать **цели** в интерфейсе Метрики (раздел 4.2) — имена должны совпадать с `reachGoal` в коде
-- Добавить `VITE_YM_COUNTER_ID` в Vercel → Environment Variables (Production)
-- После деплоя на Vercel — указать в счётчике **реальный URL** `https://*.vercel.app`
+- Добавить `VITE_YM_COUNTER_ID` в Railway → frontend service → Variables
+- После деплоя на Railway — указать в счётчике **реальный URL** `https://<frontend>.up.railway.app`
 - Проверить визиты и цели в отчёте **«В реальном времени»**
 - Сделать **2 скриншота** для отчёта: счётчик в списке + цели/визиты в реальном времени
 - Убедиться, что на localhost счётчик **не мешает** (отключён или отдельный тестовый счётчик)
@@ -631,7 +634,7 @@ CREATE UNIQUE INDEX ix_users_oauth ON users (oauth_provider, oauth_subject)
 | Поле | Значение для H6 |
 |------|-----------------|
 | Имя счётчика | `MEXC P2P Insight` |
-| Адрес сайта | Сначала `http://localhost:5173` (для отладки), после деплоя — `https://<ваш-проект>.vercel.app` |
+| Адрес сайта | Сначала `http://localhost:5173` (для отладки), после деплоя — `https://<frontend>.up.railway.app` |
 | Часовой пояс | Ваш (например, Москва) |
 | Валюта | RUB (опционально) |
 
@@ -651,7 +654,7 @@ CREATE UNIQUE INDEX ix_users_oauth ON users (oauth_provider, oauth_subject)
 1. На главной Метрики — колонка **«Номер»** (например `12345678`)  
 2. Записать в:
    - локально: `H6/frontend/.env` → `VITE_YM_COUNTER_ID=12345678`
-   - Vercel: **Settings → Environment Variables** → `VITE_YM_COUNTER_ID` для **Production** (и Preview по желанию)
+   - Railway: frontend service → Variables → `VITE_YM_COUNTER_ID`
 
 #### Шаг 5. Код счётчика (справочно)
 
@@ -720,16 +723,16 @@ export function trackEvent(goal: string, params?: Record<string, unknown>) {
 | Переменная | Где задать | Пример |
 |------------|------------|--------|
 | `VITE_YM_COUNTER_ID` | `H6/frontend/.env` (локально, не в git) | `12345678` |
-| `VITE_YM_COUNTER_ID` | Vercel → Project → Settings → Environment Variables | тот же номер, scope **Production** |
+| `VITE_YM_COUNTER_ID` | Railway → frontend service → Variables | тот же номер |
 
-После изменения env на Vercel — **Redeploy** (Deployments → … → Redeploy).
+После изменения env на Railway — сервис автоматически пересобирается.
 
 ---
 
 ### 4.5. Проверка (чеклист разработчика)
 
-1. Деплой frontend на Vercel открывается по HTTPS  
-2. В Метрике указан **тот же домен**, что у Vercel  
+1. Деплой frontend на Railway открывается по HTTPS  
+2. В Метрике указан **тот же домен**, что у Railway frontend  
 3. **Отчёты → В реальном времени** — открыть сайт в другой вкладке → появился визит (1–3 мин)  
 4. Выполнить **логин** → в реальном времени или **Отчёты → Цели** — сработала цель `login`  
 5. Выполнить `view_ad`, `blacklist_add` — цели срабатывают  
@@ -749,8 +752,8 @@ export function trackEvent(goal: string, params?: Record<string, unknown>) {
 ### 4.6. Связь с деплоем (порядок работ)
 
 ```
-Деплой Vercel (Этап 9) → узнать URL → обновить «Адрес сайта» в Метрике
-→ добавить VITE_YM_COUNTER_ID в Vercel → Redeploy → проверка (4.5)
+Деплой Railway (Этап 9) → узнать URL frontend → обновить «Адрес сайта» в Метрике
+→ добавить VITE_YM_COUNTER_ID в Railway frontend variables → redeploy → проверка (4.5)
 ```
 
 Метрику **можно** подключить в коде раньше, но **финальную проверку** делать только после появления prod-URL.
@@ -1071,211 +1074,143 @@ pip install structlog
 
 ---
 
-## Этап 9. Деплой: Vercel + backend (monorepo)
+## Этап 9. Деплой: Railway (все сервисы)
 
-Схема: **frontend** из `H6/frontend` → **Vercel**; **backend** из `H6/backend` → **Railway** или **Render** (Docker). Репозиторий один: [Rustem81/otus](https://github.com/Rustem81/otus).
+Схема: весь стек на **Railway** — frontend, backend, mock-server, PostgreSQL, Redis в одном проекте. Репозиторий: [Rustem81/otus](https://github.com/Rustem81/otus).
 
 ### 👤 Разработчик
 
-- Зарегистрироваться на Vercel, привязать GitHub-аккаунт  
-- Импортировать репозиторий `Rustem81/otus`, указать **Root Directory = `H6/frontend`**  
-- Задать Environment Variables на Vercel (`VITE_API_URL`, `VITE_YM_COUNTER_ID`, `VITE_SENTRY_DSN`)  
-- Получить URL вида `https://mexc-p2p-xxx.vercel.app`  
-- Развернуть backend (Railway/Render) — отдельный сервис из `H6/backend`  
-- Обновить Google OAuth и Яндекс.Метрику под prod-URL  
+- Зарегистрироваться на Railway, привязать GitHub-аккаунт
+- Создать проект, добавить 3 сервиса (backend, frontend, mock-server) из GitHub
+- Для каждого указать **Root Directory** (`H6/backend`, `H6/frontend`, `H6/mock-server`)
+- Добавить plugins: PostgreSQL, Redis
+- Задать переменные окружения (DATABASE_URL, REDIS_URL, CORS, OAuth, Sentry, Метрика)
+- Generate Domain для frontend и backend
+- Обновить Google OAuth redirect URI и Яндекс.Метрику под prod-URL
 - Проверить приложение end-to-end, записать ссылки в `H6/README.md`
 
 ### 🤖 С помощью AI (Cursor)
 
-- Создать `H6/frontend/vercel.json` (build/output, rewrites при необходимости)  
-- Создать `.github/workflows/h6-ci.yml` и `h6-deploy.yml` с `working-directory`  
-- `H6/frontend/Dockerfile` / `railway.toml` / `render.yaml` для backend  
-- Исправить ошибки сборки по логам Vercel/Railway  
+- `railway.toml` для каждого сервиса (опционально, можно через UI)
+- `.github/workflows/h6-deploy.yml` с Railway CLI
+- Исправить ошибки сборки по логам Railway
 - Чеклист env в `H6/README.md`
-
-**Пример промпта:**  
-> «Monorepo Rustem81/otus: frontend в H6/frontend (Vite React), backend в H6/backend (FastAPI). Сгенерируй vercel.json, h6-deploy.yml с path filter H6/**, список env для Vercel и Railway.»
 
 ---
 
-### 9.1. Регистрация и настройка Vercel (пошагово)
+### 9.1. Регистрация и настройка Railway (пошагово)
 
 #### Шаг 1. Создать аккаунт
 
-1. Открыть https://vercel.com/  
-2. **Sign Up** → **Continue with GitHub**  
-3. Разрешить Vercel доступ к репозиториям GitHub (можно «All repositories» или только `otus`)
+1. Открыть https://railway.app/
+2. **Login** → **Continue with GitHub**
+3. Разрешить Railway доступ к репозиториям
 
-#### Шаг 2. Импорт проекта (monorepo)
+#### Шаг 2. Создать проект
 
-1. Dashboard → **Add New…** → **Project**  
-2. В списке репозиториев выбрать **`Rustem81/otus`** → **Import**  
-3. На экране **Configure Project**:
+1. Dashboard → **New Project** → **Deploy from GitHub repo**
+2. Выбрать `Rustem81/otus`
+3. Railway создаст первый сервис — можно сразу настроить как backend
 
-| Поле | Значение |
-|------|----------|
-| **Framework Preset** | Vite (должен определиться автоматически) |
-| **Root Directory** | Нажать **Edit** → выбрать **`H6/frontend`** ← **критично для monorepo** |
-| **Build Command** | `npm run build` (по умолчанию) |
-| **Output Directory** | `dist` (для Vite) |
-| **Install Command** | `npm ci` или `npm install` |
+#### Шаг 3. Настроить сервисы
 
-4. Пока **не нажимать Deploy** — сначала добавить переменные (шаг 3)
+Для каждого сервиса (backend, frontend, mock-server):
 
-#### Шаг 3. Environment Variables (перед первым деплоем)
+1. В проекте → **New** → **GitHub Repo** → `Rustem81/otus`
+2. **Settings** → **Source**:
+   - **Root Directory:** `H6/backend` (или `H6/frontend`, `H6/mock-server`)
+   - **Watch Paths:** `H6/backend/**` (деплой только при изменениях в этой папке)
+3. **Settings** → **Build**:
+   - Builder: **Dockerfile** (автоопределение)
+4. **Settings** → **Networking**:
+   - **Generate Domain** → получить публичный URL
 
-**Project Settings → Environment Variables** (или на экране импорта):
+#### Шаг 4. Добавить PostgreSQL и Redis
 
-| Name | Value | Environments |
-|------|-------|--------------|
-| `VITE_API_URL` | `https://<ваш-backend>.railway.app` (после деплоя backend) | Production, Preview |
-| `VITE_YM_COUNTER_ID` | номер из Яндекс.Метрики | Production |
-| `VITE_SENTRY_DSN` | DSN frontend-проекта Sentry | Production |
+1. В проекте → **New** → **Database** → **PostgreSQL**
+2. В проекте → **New** → **Database** → **Redis**
+3. Railway автоматически создаёт переменные `DATABASE_URL`, `REDIS_URL`
 
-> Vite вшивает `VITE_*` **на этапе сборки**. После смены переменных нужен **Redeploy**.
+#### Шаг 5. Переменные окружения (backend)
 
-#### Шаг 4. Первый деплой
+В сервисе backend → **Variables**:
 
-1. **Deploy**  
-2. Дождаться статуса **Ready**  
-3. Открыть **Visit** — URL вида `https://otus-xxx.vercel.app` или кастомный  
-4. Скопировать URL в `H6/README.md`
+| Variable | Value |
+|----------|-------|
+| `DATABASE_URL` | `${{Postgres.DATABASE_URL}}` (Railway reference) |
+| `REDIS_URL` | `${{Redis.REDIS_URL}}` (Railway reference) |
+| `SECRET_KEY` | сгенерировать случайную строку |
+| `BACKEND_CORS_ORIGINS` | `https://<frontend-domain>.up.railway.app` |
+| `GOOGLE_CLIENT_ID` | из Google Console |
+| `GOOGLE_CLIENT_SECRET` | из Google Console |
+| `GOOGLE_REDIRECT_URI` | `https://<backend-domain>.up.railway.app/api/v1/auth/google/callback` |
+| `SENTRY_DSN_BACKEND` | из Sentry |
+| `P2P_MOCK_BASE_URL` | `http://mock-server.railway.internal:8001/v1/api` |
+| `P2P_DATA_SOURCE` | `mock` |
+| `POLLING_INTERVAL_SEC` | `15` |
 
-#### Шаг 5. Автодеплой из GitHub
+#### Шаг 6. Переменные окружения (frontend)
 
-По умолчанию Vercel деплоит:
+В сервисе frontend → **Variables** (build-time для Vite):
 
-- **Production** — каждый push в ветку **Production Branch** (обычно `main`)  
-- **Preview** — каждый PR
+| Variable | Value |
+|----------|-------|
+| `VITE_API_URL` | `https://<backend-domain>.up.railway.app` |
+| `VITE_YM_COUNTER_ID` | номер из Яндекс.Метрики |
+| `VITE_SENTRY_DSN` | DSN frontend из Sentry |
 
-Проверить: **Settings → Git** → Production Branch = `main`, Connected Repository = `Rustem81/otus`.
+#### Шаг 7. Internal networking (mock-server)
 
-#### Шаг 6. Ограничить деплой только папкой H6 (рекомендуется)
+Mock-server не нужен публичный домен — backend обращается к нему по внутренней сети Railway:
+- Mock-server → Settings → Networking → **не генерировать** публичный домен
+- Backend переменная: `P2P_MOCK_BASE_URL=http://mock-server.railway.internal:8001/v1/api`
 
-**Settings → Git → Ignored Build Step** — включить и указать команду:
+#### Шаг 8. Проверка после деплоя
 
-```bash
-git diff HEAD^ HEAD --quiet H6/frontend/
+- [ ] Frontend открывается без белого экрана
+- [ ] `curl https://<backend>/health` → `{"status": "ok"}`
+- [ ] Логин работает (test@test.com / test123456)
+- [ ] Объявления загружаются
+- [ ] В Network нет CORS-ошибок
+
+### 9.2. Автодеплой
+
+Railway автоматически деплоит при push в ветку (по умолчанию `main`). Watch Paths ограничивают деплой только при изменениях в соответствующей папке.
+
+### 9.3. GitHub Actions deploy (опционально)
+
+Если нужен деплой через CI (а не через Railway Git Integration):
+
+```yaml
+# .github/workflows/h6-deploy.yml
+- name: Deploy to Railway
+  uses: bervProject/railway-deploy@main
+  with:
+    railway_token: ${{ secrets.RAILWAY_TOKEN }}
+    service: backend
 ```
 
-Смысл: если в коммите не менялся `H6/frontend`, Vercel **пропускает** сборку (экономия времени в monorepo).
+Но для H6 достаточно Railway Git Integration (автодеплой из main).
 
-Альтернатива: в **Root Directory** уже указан `H6/frontend` — Vercel и так собирает только эту папку, но preview может запускаться на любой push в `main`; Ignored Build Step уточняет поведение.
-
-#### Шаг 7. Получить токен для GitHub Actions (опционально)
-
-Если деплой через Actions, а не только через Git Integration:
-
-1. https://vercel.com/account/tokens → **Create**  
-2. Скопировать token → GitHub Secret `VERCEL_TOKEN`  
-3. В Actions также нужны `VERCEL_ORG_ID` и `VERCEL_PROJECT_ID` (Settings → General в проекте)
-
-#### Шаг 8. Что проверить после деплоя Vercel
-
-- [ ] Главная открывается без белого экрана  
-- [ ] В Network нет CORS-ошибок к API (если есть — настроить backend `CORS_ORIGINS`)  
-- [ ] `VITE_API_URL` указывает на **HTTPS** backend  
-- [ ] Логин работает  
-- [ ] В исходниках страницы есть запрос к `mc.yandex.ru` (если Metrika включена в prod build)
-
-Документация Vercel: [Monorepos](https://vercel.com/docs/monorepos), [Environment Variables](https://vercel.com/docs/projects/environment-variables).
-
----
-
-### 9.2. Файл `H6/frontend/vercel.json` (генерирует AI)
-
-Пример для SPA (все маршруты → `index.html`):
-
-```json
-{
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
-}
-```
-
-При использовании **Root Directory** в UI часть полей дублируется — главное, чтобы `rewrites` для React Router были на месте.
-
----
-
-### 9.3. Backend на Railway / Render (кратко)
-
-#### Railway (рекомендуется для Docker)
-
-1. https://railway.app/ → Login with GitHub  
-2. **New Project** → **Deploy from GitHub repo** → `Rustem81/otus`  
-3. **Settings** → **Root Directory** / **Watch Paths**: `H6/backend` (или Dockerfile path `H6/backend/Dockerfile`)  
-4. Добавить сервисы **PostgreSQL**, **Redis** в том же проекте  
-5. Variables: скопировать из `H6/.env.example`  
-6. **Generate Domain** → получить `https://xxx.up.railway.app`  
-7. Этот URL → `VITE_API_URL` на Vercel → **Redeploy** frontend
-
-#### Render
-
-Аналогично: New Web Service → репозиторий `otus` → Root `H6/backend`, Docker или `uvicorn`.
-
----
-
-### 9.4. Ansible (опционально, только VPS)
-
-Если backend + Prometheus/Grafana на **своём сервере**, а не Railway:
-
-```
-H6/deploy/ansible/
-├── playbook.yml          # установка Docker, git pull, compose up
-├── inventory/production  # IP сервера, user
-└── templates/.env.j2     # шаблон env (секреты из vault, не в git)
-```
-
-Playbook делает: clone `Rustem81/otus` → `cd H6` → `docker compose up -d`.  
-**Vercel при этом всё равно** деплоит frontend из GitHub — Ansible на frontend не влияет.
-
-👤 Разработчик: настроить SSH-доступ к VPS, inventory, vault с паролями.  
-🤖 AI: написать `playbook.yml` и README по запуску `ansible-playbook`.
-
-Для типовой сдачи H6 **достаточно Vercel + Railway без Ansible**.
-
----
-
-### 9.5. Сводная схема деплоя
-
-```
-GitHub: Rustem81/otus (main)
-    │
-    ├─► Vercel  ── Root: H6/frontend ──► https://xxx.vercel.app
-    │         env: VITE_API_URL, VITE_YM_COUNTER_ID, VITE_SENTRY_DSN
-    │
-    └─► Railway ── H6/backend + Postgres + Redis ──► https://api.xxx.railway.app
-              ▲
-              └── CORS_ORIGINS = https://xxx.vercel.app
-```
-
-### 9.6. После деплоя — обновить интеграции
+### 9.4. После деплоя — обновить интеграции
 
 | Сервис | Действие |
 |--------|----------|
-| **Google OAuth** | JavaScript origins + redirect URI с prod-доменами ([Этап 3](#этап-3-oauth2-google)) |
-| **Яндекс.Метрика** | Адрес сайта = URL Vercel ([Этап 4.1](#41-регистрация-и-настройка-счётчика-пошагово)) |
-| **UptimeRobot** | Monitor → `https://<api>/health` |
-| **Sentry** | `environment=production` |
+| **Google OAuth** | Redirect URI с Railway backend URL |
+| **Яндекс.Метрика** | Адрес сайта = Railway frontend URL |
+| **UptimeRobot** | Monitor → `https://<backend>/health` |
+| **Sentry** | `SENTRY_ENVIRONMENT=production` |
 
-### 9.7. Переменные prod (backend)
-
-- `SENTRY_ENVIRONMENT=production`  
-- `CORS_ORIGINS=https://<ваш-проект>.vercel.app`  
-- `COOKIE_SECURE=true`  
-- `GOOGLE_REDIRECT_URI=https://<api>/api/v1/auth/google/callback`
-
-### 9.8. Что указать в `H6/README.md`
+### 9.5. Что указать в `H6/README.md`
 
 ```markdown
 ## Деплой
 
 - Репозиторий: https://github.com/Rustem81/otus/tree/main/H6
-- Frontend (Vercel): https://....vercel.app
-- Backend API: https://....railway.app
-- Swagger: https://....railway.app/docs
+- Frontend: https://<frontend>.up.railway.app
+- Backend API: https://<backend>.up.railway.app
+- Swagger: https://<backend>.up.railway.app/docs
+- Хостинг: Railway (все сервисы в одном проекте)
 ```
 
 ---

@@ -4,11 +4,9 @@
 **Репозиторий:** [github.com/Rustem81/otus](https://github.com/Rustem81/otus)  
 **Папка ДЗ:** [github.com/Rustem81/otus/tree/main/H6](https://github.com/Rustem81/otus/tree/main/H6)  
 **Детальный план:** [work_plan.md](./work_plan.md)  
-**Предложения по плану:** [work_plan_proposals.md](./work_plan_proposals.md)
+**Хостинг:** Railway (все сервисы в одном проекте)
 
 **Легенда:** `[ ]` не начато · `[/]` в работе · `[x]` готово · `[-]` пропущено (опционально)
-
-**Обновляйте дату внизу файла при каждой сессии.**
 
 ---
 
@@ -28,9 +26,22 @@
 
 ---
 
-## Фаза 0 — Подготовка (блокер для всего остального)
+## Схема деплоя (Railway)
 
-> ⚠️ **Без кода в `H6/backend` и `H6/frontend` Vercel и CI нечего собирать.**
+```
+GitHub: Rustem81/otus (main)
+    │
+    └─► Railway Project "MEXC P2P Insight"
+         ├── Service: frontend (Docker, H6/frontend) → https://frontend-xxx.up.railway.app
+         ├── Service: backend (Docker, H6/backend)   → https://backend-xxx.up.railway.app
+         ├── Service: mock-server (Docker, H6/mock-server)
+         ├── PostgreSQL (managed plugin)
+         └── Redis (managed plugin)
+```
+
+---
+
+## Фаза 0 — Подготовка (блокер для всего остального)
 
 | # | Задача | Статус | Дата | Заметки |
 |---|--------|--------|------|---------|
@@ -38,7 +49,7 @@
 | 0.2 | Локально: `docker compose up` в `H6/` работает | [ ] | | |
 | 0.3 | Создать `H6/.env` из `.env.example` (не в git) | [ ] | | |
 | 0.4 | Черновик `H6/README.md` | [ ] | | |
-| 0.5 | Push в `Rustem81/otus` — в [H6](https://github.com/Rustem81/otus/tree/main/H6) видны `backend/`, `frontend/` | [ ] | | |
+| 0.5 | Push в GitHub — в H6 видны `backend/`, `frontend/` | [ ] | | |
 
 **Фаза 0 завершена:** [ ]
 
@@ -48,13 +59,12 @@
 
 | # | Задача | 👤 / 🤖 | Статус | Дата | Заметки |
 |---|--------|---------|--------|------|---------|
-| 1.1 | `.github/workflows/h6-ci.yml` в **корне** otus | 🤖 | [ ] | | path filter `H6/**` |
-| 1.2 | `.github/workflows/h6-deploy.yml` (deploy на push `main`) | 🤖 | [ ] | | |
-| 1.3 | GitHub Secrets (VERCEL, Railway, OAuth, Sentry…) | 👤 | [ ] | | |
-| 1.4 | CI зелёный на тестовом PR/push | 👤 | [ ] | | ссылка на run: |
-| 1.5 | Deploy после merge в `main` успешен | 👤 | [ ] | | |
+| 1.1 | `.github/workflows/h6-ci.yml` (lint, test, audit) | 🤖 | [ ] | | path filter `H6/**` |
+| 1.2 | `.github/workflows/h6-deploy.yml` (Railway deploy on push main) | 🤖 | [ ] | | |
+| 1.3 | GitHub Secrets (`RAILWAY_TOKEN`, OAuth, Sentry) | 👤 | [ ] | | |
+| 1.4 | CI зелёный на тестовом push | 👤 | [ ] | | |
+| 1.5 | Deploy после push в `main` успешен | 👤 | [ ] | | |
 
-**Критерий task.md:** пайплайн собирает, тестирует, линтит, деплоит.  
 **Фаза 1 завершена:** [ ]
 
 ---
@@ -81,7 +91,7 @@
 | 3.3 | Backend: routes + миграция `oauth_*` | 🤖 | [ ] | | |
 | 3.4 | Frontend: кнопка Google, callback | 🤖 | [ ] | | |
 | 3.5 | Тест: успех / отмена / ошибка | 👤 | [ ] | | |
-| 3.6 | Prod redirect URI после деплоя | 👤 | [ ] | | |
+| 3.6 | Prod redirect URI (Railway URL) | 👤 | [ ] | | |
 
 **Фаза 3 завершена:** [ ]
 
@@ -94,22 +104,27 @@
 | 4.1 | Счётчик на metrika.yandex.ru | 👤 | [ ] | | ID: |
 | 4.2 | Цели в UI (`login`, `view_ad`, …) | 👤 | [ ] | | |
 | 4.3 | Код: `analytics.ts`, `trackEvent`, SPA hit | 🤖 | [ ] | | |
-| 4.4 | `VITE_YM_COUNTER_ID` на Vercel + redeploy | 👤 | [ ] | | |
+| 4.4 | `VITE_YM_COUNTER_ID` в Railway env + redeploy | 👤 | [ ] | | |
 | 4.5 | Проверка «В реальном времени» + скриншот | 👤 | [ ] | | |
 
 **Фаза 4 завершена:** [ ]
 
 ---
 
-## Фаза 5 — Деплой (обязательно для сдачи)
+## Фаза 5 — Деплой Railway (обязательно для сдачи)
 
 | # | Задача | 👤 / 🤖 | Статус | Дата | Заметки |
 |---|--------|---------|--------|------|---------|
-| 5.1 | Vercel: импорт `Rustem81/otus`, Root = `H6/frontend` | 👤 | [ ] | | |
-| 5.2 | Railway/Render: `H6/backend` + Postgres + Redis | 👤 | [ ] | | |
-| 5.3 | `VITE_API_URL` и CORS на prod | 👤+🤖 | [ ] | | |
-| 5.4 | URL записаны в `H6/README.md` | 👤 | [ ] | | Frontend: / API: |
-| 5.5 | E2E на prod: login, ads, OAuth | 👤 | [ ] | | |
+| 5.1 | Railway: создать проект, привязать GitHub `Rustem81/otus` | 👤 | [ ] | | |
+| 5.2 | Service: backend (Root = `H6/backend`, Dockerfile) | 👤 | [ ] | | |
+| 5.3 | Service: frontend (Root = `H6/frontend`, Dockerfile) | 👤 | [ ] | | |
+| 5.4 | Service: mock-server (Root = `H6/mock-server`, Dockerfile) | 👤 | [ ] | | |
+| 5.5 | Plugin: PostgreSQL + Redis | 👤 | [ ] | | |
+| 5.6 | Variables: DATABASE_URL, REDIS_URL, CORS, OAuth, Sentry | 👤 | [ ] | | |
+| 5.7 | Generate domains для frontend и backend | 👤 | [ ] | | |
+| 5.8 | `VITE_API_URL` → backend Railway URL | 👤 | [ ] | | |
+| 5.9 | E2E на prod: login, ads, OAuth | 👤 | [ ] | | |
+| 5.10 | URL записаны в `H6/README.md` | 👤 | [ ] | | |
 
 **Фаза 5 завершена:** [ ]
 
@@ -139,14 +154,13 @@
 
 ---
 
-## Фаза 8 — Дополнительно (не в обязательных критериях task.md)
+## Фаза 8 — Дополнительно (не в обязательных критериях)
 
 | # | Задача | Статус | Дата | Заметки |
 |---|--------|--------|------|---------|
 | 8.1 | Sentry backend + frontend | [ ] | | |
-| 8.2 | Prometheus + Grafana (docker / VPS) | [ ] | | |
+| 8.2 | Prometheus + Grafana (только локально, docker-compose) | [ ] | | |
 | 8.3 | Платежи (ЮKassa) | [-] | | опционально |
-| 8.4 | Ansible на VPS | [-] | | опционально |
 
 ---
 
@@ -158,23 +172,21 @@
 | 9.2 | `H6/security_audit.md` (финальная вычитка) | [ ] | | |
 | 9.3 | `H6/README.md` — ссылки repo + deploy | [ ] | | |
 | 9.4 | `H6/report.md` — скриншоты, таблица AI-промптов | [ ] | | |
-| 9.5 | AI-оптимизация (шаг 8 task.md) задокументирована | [ ] | | |
-| 9.6 | Сдача на платформе OTUS | [ ] | | |
+| 9.5 | Сдача на платформе OTUS | [ ] | | |
 
 **Фаза 9 завершена:** [ ]
 
 ---
 
-## Чеклист «Принято» (кратко из task.md)
+## Чеклист «Принято»
 
-- [ ] Шаги 1–4, 6–7 выполнены
-- [ ] CI/CD работает (build + test + lint + **deploy**)
-- [ ] ≥2 интеграции: **OAuth2** + **аналитика**
+- [ ] CI/CD работает (build + test + lint + deploy)
+- [ ] ≥2 интеграции: **OAuth2** + **аналитика (Яндекс.Метрика)**
 - [ ] Аудит безопасности + исправления + `security_audit.md`
 - [ ] Мониторинг (UptimeRobot) + логи JSON + `/health`
 - [ ] AI задокументирован (CI, аудит, логи)
-- [ ] Приложение на prod, ссылки в README
-- [ ] Все артефакты в [H6](https://github.com/Rustem81/otus/tree/main/H6) на GitHub
+- [ ] Приложение на Railway, ссылки в README
+- [ ] Все артефакты в H6 на GitHub
 
 **Готов к сдаче:** [ ]
 
@@ -185,8 +197,7 @@
 | Дата | Что сделано | Следующий шаг |
 |------|-------------|---------------|
 | | | |
-| | | |
 
 ---
 
-*Шаблон roadmap для H6. Меняйте `[ ]` → `[x]` по мере выполнения.*
+*Обновляйте `[ ]` → `[x]` по мере выполнения.*
