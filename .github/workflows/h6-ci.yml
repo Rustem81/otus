@@ -1,0 +1,101 @@
+name: H6 CI
+
+on:
+  push:
+    paths:
+      - 'H6/**'
+      - '.github/workflows/h6-*.yml'
+  pull_request:
+    paths:
+      - 'H6/**'
+      - '.github/workflows/h6-*.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  backend-lint-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: H6/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Run tests with pytest
+        run: pytest
+
+  backend-security:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: H6/backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install dependencies
+        run: pip install -e "." && pip install pip-audit
+
+      - name: Run pip-audit
+        run: pip-audit
+
+  frontend-lint-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: H6/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: H6/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Lint with eslint
+        run: npm run lint
+
+      - name: Run tests with vitest
+        run: npm run test -- --run
+
+  frontend-audit:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    defaults:
+      run:
+        working-directory: H6/frontend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: H6/frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run npm audit
+        run: npm audit --audit-level=high

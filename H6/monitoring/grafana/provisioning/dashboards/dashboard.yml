@@ -1,0 +1,16 @@
+# Grafana dashboard provisioning — auto-loads dashboard JSON files on startup
+
+apiVersion: 1
+
+providers:
+  - name: "MEXC P2P"
+    orgId: 1
+    folder: ""
+    type: file
+    disableDeletion: false
+    editable: true
+    updateIntervalSeconds: 30
+    allowUiUpdates: true
+    options:
+      path: /var/lib/grafana/dashboards
+      foldersFromFilesStructure: false

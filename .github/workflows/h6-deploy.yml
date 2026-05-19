@@ -1,0 +1,36 @@
+name: H6 Post-Deploy Verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'H6/**'
+      - '.github/workflows/h6-deploy.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Railway autodeploy to complete
+        run: |
+          echo "Waiting 180s for Railway to build and deploy..."
+          sleep 180
+
+      - name: Smoke test - verify /health status
+        run: |
+          echo "Testing: ${{ vars.BACKEND_URL }}/health"
+          RESPONSE=$(curl -sf --max-time 30 ${{ vars.BACKEND_URL }}/health || echo '{"status":"unreachable"}')
+          echo "Health response: $RESPONSE"
+          STATUS=$(echo "$RESPONSE" | jq -r '.status')
+          if [ "$STATUS" != "ok" ]; then
+            echo "::error::Smoke test FAILED: /health status is '$STATUS', expected 'ok'"
+            echo "This may indicate:"
+            echo "  - Railway deploy is still in progress (try increasing wait time)"
+            echo "  - A dependency (postgres/redis/mock-server) is unavailable"
+            echo "  - Application failed to start"
+            exit 1
+          fi
+          echo "✅ Smoke test PASSED: Backend is healthy (status=ok)"
