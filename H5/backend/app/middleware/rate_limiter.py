@@ -75,20 +75,24 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         Returns:
             True if allowed, False if limit exceeded
         """
-        now = int(time.time())
-        window_start = now - window
+        try:
+            now = int(time.time())
+            window_start = now - window
 
-        # Remove old entries outside window
-        await self._redis.zremrangebyscore(key, 0, window_start)
+            # Remove old entries outside window
+            await self._redis.zremrangebyscore(key, 0, window_start)
 
-        # Count current requests in window
-        current = await self._redis.zcard(key)
+            # Count current requests in window
+            current = await self._redis.zcard(key)
 
-        if current >= limit:
-            return False
+            if current >= limit:
+                return False
 
-        # Add current request
-        await self._redis.zadd(key, {str(now): now})
-        await self._redis.expire(key, window)
+            # Add current request
+            await self._redis.zadd(key, {str(now): now})
+            await self._redis.expire(key, window)
 
-        return True
+            return True
+        except Exception:
+            # If Redis is unavailable, allow the request (fail-open)
+            return True

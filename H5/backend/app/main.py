@@ -57,7 +57,7 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# --- Security middleware (order matters: last added = first executed) ---
+# --- Security middleware ---
 app.add_middleware(CSRFMiddleware)
 app.add_middleware(RateLimitMiddleware)
 

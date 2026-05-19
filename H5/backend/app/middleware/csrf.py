@@ -1,75 +1,95 @@
+"""CSRF protection middleware using double-submit cookie pattern.
+
+For SPA with Bearer token auth, CSRF is not strictly required (tokens are not
+sent automatically like cookies). However, this middleware adds defense-in-depth
+for any cookie-based flows and demonstrates the pattern.
+
+How it works:
+1. On any response, a CSRF cookie is set (readable by JavaScript).
+2. For mutating requests (POST, PUT, DELETE), the middleware checks that
+   the X-CSRF-Token header matches the csrf_token cookie value.
+3. Safe methods (GET, HEAD, OPTIONS) and exempt paths skip validation.
+"""
+
 from __future__ import annotations
 
 import secrets
 from collections.abc import Awaitable, Callable
 
 from fastapi import Request, Response
+from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 
-CSRF_TOKEN_NAME = "csrf_token"
-CSRF_HEADER_NAME = "X-CSRF-Token"
 CSRF_COOKIE_NAME = "csrf_token"
+CSRF_HEADER_NAME = "X-CSRF-Token"
 
-# Paths exempt from CSRF protection (MVP - simplified auth)
-CSRF_EXEMPT_PATHS = {
-    "/api/v1/auth/login",
-    "/api/v1/auth/register",
-    "/api/v1/auth/verify-email",
-    "/api/v1/auth/logout",
-    "/api/v1/auth/me",
-    "/api/v1/auth/csrf-token",
-}
+# Paths exempt from CSRF (public endpoints that don't need protection)
+CSRF_EXEMPT_PATHS = frozenset({
+    "/health",
+    "/docs",
+    "/openapi.json",
+    "/redoc",
+})
+
+# Prefixes exempt from CSRF (Bearer-only auth endpoints)
+CSRF_EXEMPT_PREFIXES = (
+    "/api/v1/auth/",
+)
 
 
 class CSRFMiddleware(BaseHTTPMiddleware):
     """
-    CSRF protection using double-submit cookie pattern.
+    Double-submit cookie CSRF protection.
 
-    For mutating requests (POST, PUT, DELETE), validates that:
-    1. CSRF token exists in cookie
-    2. CSRF token exists in header
-    3. Both tokens match
+    - Sets csrf_token cookie on every response (httponly=False so JS can read it).
+    - Validates X-CSRF-Token header matches cookie on POST/PUT/DELETE.
     """
 
     async def dispatch(
         self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
     ) -> Response:
-        # Skip CSRF for safe methods
+        # Safe methods — no CSRF check needed
         if request.method in ("GET", "HEAD", "OPTIONS", "TRACE"):
             response = await call_next(request)
-            # Set CSRF cookie if not present
-            if CSRF_COOKIE_NAME not in request.cookies:
-                response = self._set_csrf_cookie(response)
+            self._ensure_csrf_cookie(request, response)
             return response
 
-        # Skip CSRF for exempt paths
-        if request.url.path in CSRF_EXEMPT_PATHS:
+        # Exempt paths
+        path = request.url.path
+        if path in CSRF_EXEMPT_PATHS or path.startswith(CSRF_EXEMPT_PREFIXES):
             response = await call_next(request)
-            # Set CSRF cookie for subsequent requests
-            if CSRF_COOKIE_NAME not in request.cookies:
-                response = self._set_csrf_cookie(response)
+            self._ensure_csrf_cookie(request, response)
             return response
 
-        # MVP: Skip CSRF validation for all requests (simplified auth)
-        # In production, enable CSRF protection
+        # Validate CSRF for mutating requests
+        cookie_token = request.cookies.get(CSRF_COOKIE_NAME)
+        header_token = request.headers.get(CSRF_HEADER_NAME)
+
+        if not cookie_token or not header_token:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token missing"},
+            )
+
+        if not secrets.compare_digest(cookie_token, header_token):
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "CSRF token mismatch"},
+            )
+
+        # Valid — proceed
         response = await call_next(request)
         return response
 
-    def _set_csrf_cookie(self, response: Response) -> Response:
-        """Generate and set CSRF token cookie."""
-        token = secrets.token_urlsafe(32)
-        response.set_cookie(
-            key=CSRF_COOKIE_NAME,
-            value=token,
-            httponly=False,  # Must be accessible by JavaScript
-            secure=False,  # Set to True in production with HTTPS
-            samesite="none",  # Required for cross-origin in development
-            max_age=86400,  # 24 hours
-        )
-        return response
-
-
-async def get_csrf_token() -> dict[str, str]:
-    """Endpoint to get fresh CSRF token."""
-    token = secrets.token_urlsafe(32)
-    return {"csrf_token": token}
+    def _ensure_csrf_cookie(self, request: Request, response: Response) -> None:
+        """Set CSRF cookie if not already present."""
+        if CSRF_COOKIE_NAME not in request.cookies:
+            token = secrets.token_urlsafe(32)
+            response.set_cookie(
+                key=CSRF_COOKIE_NAME,
+                value=token,
+                httponly=False,  # JS must read this
+                secure=False,  # True in production with HTTPS
+                samesite="lax",
+                max_age=86400,
+            )

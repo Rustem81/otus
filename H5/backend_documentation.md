@@ -531,6 +531,7 @@ curl http://localhost:8000/health
 - **Сессии:** UUID-токены хранятся в Redis с TTL (24 часа по умолчанию)
 - **Передача токена:** Header `Authorization: Bearer <token>`
 - **Автопродление:** TTL сессии обновляется при каждом запросе
+- **Logout:** Удаляет сессию из Redis — токен становится невалидным немедленно
 
 ### 5.2. Авторизация (RBAC)
 
@@ -541,14 +542,16 @@ class RoleChecker:
     def __init__(self, allowed_roles: list[UserRole]):
         self.allowed_roles = allowed_roles
 
-    def __call__(self, user: User) -> User:
-        if user.role not in self.allowed_roles:
+    async def __call__(self, current_user: User) -> User:
+        if current_user.role not in self.allowed_roles:
             raise HTTPException(403, "Insufficient permissions")
-        return user
+        return current_user
 ```
 
 - `require_user` — доступ для USER и ADMIN
-- `require_admin` — доступ только для ADMIN
+- `require_admin` — доступ только для ADMIN (все `/api/v1/admin/*` эндпоинты)
+
+Обычный пользователь (USER) получает HTTP 403 при попытке обратиться к admin-эндпоинтам.
 
 ### 5.3. CORS
 
@@ -568,9 +571,34 @@ app.add_middleware(
 - Хранение счётчиков в Redis
 - Настраиваемые лимиты по эндпоинтам
 
-### 5.5. CSRF Protection
+### 5.5. CSRF Protection (Double-Submit Cookie)
 
-Middleware генерирует и проверяет CSRF-токены для мутирующих запросов.
+Middleware реализует паттерн double-submit cookie:
+
+1. На каждый ответ сервер устанавливает cookie `csrf_token` (httponly=False — доступен JS)
+2. Для мутирующих запросов (POST, PUT, DELETE) клиент обязан отправить заголовок `X-CSRF-Token` со значением из cookie
+3. Middleware сравнивает cookie и header — при несовпадении возвращает 403
+
+**Исключения из проверки:**
+- Safe-методы (GET, HEAD, OPTIONS)
+- Публичные эндпоинты: `/api/v1/auth/login`, `/api/v1/auth/register`, `/api/v1/auth/verify-email`
+
+**Пример использования на фронтенде:**
+```typescript
+// Прочитать CSRF-токен из cookie
+const csrfToken = document.cookie.match(/csrf_token=([^;]+)/)?.[1];
+
+// Отправить в заголовке при POST/PUT/DELETE
+fetch('/api/v1/blacklist', {
+  method: 'POST',
+  headers: {
+    'Authorization': `Bearer ${token}`,
+    'X-CSRF-Token': csrfToken,
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({ merchant_id: '...' }),
+});
+```
 
 ### 5.6. Защита секретов
 

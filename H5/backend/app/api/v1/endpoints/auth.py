@@ -2,14 +2,13 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.api.dependencies import get_auth_service, get_current_active_user
+from app.api.dependencies import get_auth_service, get_current_active_user, bearer_scheme
 from app.core.database import get_db
 from app.core.redis import get_redis
-from app.middleware.csrf import CSRF_COOKIE_NAME
 from app.models.user import User
 from app.schemas.auth import (
     ErrorResponse,
@@ -21,6 +20,7 @@ from app.schemas.auth import (
     VerifyEmailResponse,
 )
 from app.services.auth_service import AuthService
+from fastapi.security import HTTPAuthorizationCredentials
 
 router = APIRouter()
 
@@ -38,20 +38,12 @@ async def register(
     request_data: UserRegisterRequest,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> RegisterResponse:
-    """
-    Register a new user account.
-
-    Sends verification email with token (24h expiry).
-    """
+    """Register a new user account."""
     try:
         user, verification_token = await auth_service.register(
             email=request_data.email,
             password=request_data.password,
         )
-
-        # TODO: Send actual email with verification_token
-        # For MVP, just return success (in production, integrate email service)
-
         return RegisterResponse(
             message="Registration successful. Please check your email to verify your account.",
             email=user.email,
@@ -74,9 +66,7 @@ async def verify_email(
     token: str,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> VerifyEmailResponse:
-    """
-    Verify user email address with token from email.
-    """
+    """Verify user email address with token from email."""
     try:
         user = await auth_service.verify_email(token)
         return VerifyEmailResponse(
@@ -95,33 +85,24 @@ async def verify_email(
     response_model=LoginResponse,
     responses={
         400: {"model": ErrorResponse, "description": "Invalid credentials"},
-        401: {"model": ErrorResponse, "description": "Email not verified"},
         429: {"model": ErrorResponse, "description": "Rate limit exceeded"},
     },
 )
 async def login(
     request_data: UserLoginRequest,
-    response: Response,
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
 ) -> LoginResponse:
-    """
-    Authenticate user and create session.
-
-    Sets session_token cookie on success.
-    """
+    """Authenticate user and create session. Returns access_token."""
     try:
         user, session_token = await auth_service.login(
             email=request_data.email,
             password=request_data.password,
         )
-
-        # Return token in response (MVP: simple token auth)
         return LoginResponse(
             user=UserResponse.model_validate(user),
             access_token=session_token,
         )
-    except ValueError as e:
-        # Generic error to prevent user enumeration
+    except ValueError:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid credentials",
@@ -136,25 +117,18 @@ async def login(
     },
 )
 async def logout(
-    response: Response,
-    current_user: Annotated[User, Depends(get_current_active_user)],
+    bearer: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer_scheme)],
     auth_service: Annotated[AuthService, Depends(get_auth_service)],
-    session_token: str | None = None,  # From cookie
 ) -> dict[str, str]:
-    """
-    Logout user and clear session.
-    """
-    # Get session token from cookie if not provided
-    if not session_token:
-        # This will be handled by cookie dependency
-        pass
+    """Logout user — invalidates session token in Redis."""
+    token = bearer.credentials if bearer else None
+    if not token:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Not authenticated",
+        )
 
-    # Delete session
-    # Note: In a real implementation, we'd extract the cookie value here
-    # For now, the session extension in get_current_user validates it
-
-    response.delete_cookie(key="session_token")
-
+    await auth_service.logout(token)
     return {"message": "Logged out successfully"}
 
 
@@ -168,19 +142,5 @@ async def logout(
 async def get_current_user_info(
     current_user: Annotated[User, Depends(get_current_active_user)],
 ) -> UserResponse:
-    """
-    Get current authenticated user information.
-    """
+    """Get current authenticated user information."""
     return UserResponse.model_validate(current_user)
-
-
-@router.get("/csrf-token")
-async def get_csrf_token_endpoint() -> dict[str, str]:
-    """
-    Get a fresh CSRF token.
-
-    Token is also set as cookie automatically by CSRF middleware.
-    """
-    from app.middleware.csrf import get_csrf_token
-
-    return await get_csrf_token()

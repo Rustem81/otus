@@ -201,6 +201,7 @@ AI сгенерировал endpoint, который был доработан:
 - **Сессии:** UUID-токены в Redis, TTL 24 часа
 - **Передача:** Header `Authorization: Bearer <token>`
 - **Автопродление:** TTL обновляется при каждом запросе
+- **Logout:** Удаляет сессию из Redis (токен немедленно невалиден)
 
 ### Авторизация (RBAC)
 
@@ -212,6 +213,7 @@ class RoleChecker:
 
 - `require_user` — USER + ADMIN
 - `require_admin` — только ADMIN (для /admin/*)
+- Обычный USER получает 403 при попытке доступа к admin-эндпоинтам
 
 ### CORS
 
@@ -222,7 +224,7 @@ allow_credentials=True
 
 ### Дополнительно
 
-- **CSRF middleware** — защита мутирующих запросов
+- **CSRF (Double-Submit Cookie)** — middleware проверяет совпадение cookie `csrf_token` и заголовка `X-CSRF-Token` для POST/PUT/DELETE. Login и register исключены из проверки.
 - **Rate limiting** — счётчики в Redis по IP
 - **Секреты** — только в .env, не в коде
 

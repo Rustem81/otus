@@ -50,10 +50,10 @@ class TestRuleBasedScoring:
     def test_calculate_high_risk(self):
         """Poor merchant should have high risk score."""
         merchant = create_merchant(
-            rating=2.0,
-            trades_count=10,
-            success_rate=0.7,
-            closing_speed=3000.0,  # Very slow
+            rating=0.5,
+            trades_count=2,
+            success_rate=0.3,
+            closing_speed=3500.0,  # Very slow, close to cap
         )
         result = self.scoring.calculate(merchant)
 

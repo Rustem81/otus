@@ -1,16 +1,30 @@
 const API = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-function getHeaders(): HeadersInit {
-  const headers: HeadersInit = { "Content-Type": "application/json" };
+function getCsrfToken(): string | null {
+  const match = document.cookie.match(/csrf_token=([^;]+)/);
+  return match ? match[1] : null;
+}
+
+function getHeaders(method?: string): HeadersInit {
+  const headers: Record<string, string> = { "Content-Type": "application/json" };
   const token = localStorage.getItem("access_token");
   if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  // Add CSRF token for mutating requests
+  if (method && ["POST", "PUT", "DELETE", "PATCH"].includes(method.toUpperCase())) {
+    const csrf = getCsrfToken();
+    if (csrf) headers["X-CSRF-Token"] = csrf;
+  }
+
   return headers;
 }
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = init?.method || "GET";
   const res = await fetch(`${API}${path}`, {
     ...init,
-    headers: { ...getHeaders(), ...init?.headers },
+    credentials: "include", // Send cookies (csrf_token)
+    headers: { ...getHeaders(method), ...init?.headers },
   });
   if (res.status === 401) {
     localStorage.removeItem("access_token");

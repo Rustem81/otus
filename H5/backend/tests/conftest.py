@@ -2,22 +2,22 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
-from typing import Any
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, patch
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
+from sqlalchemy.pool import StaticPool
 
 from app.core.database import get_db
 from app.core.redis import get_redis
 from app.main import app
 from app.models.base import Base
 
-# Test database URL (use in-memory SQLite for tests)
+# Use SQLite with custom type handling for tests
 TEST_DATABASE_URL = "sqlite+aiosqlite:///:memory:"
 
 
@@ -44,36 +44,76 @@ def mock_redis() -> AsyncMock:
 @pytest.fixture(scope="session")
 def event_loop():
     """Create an instance of the default event loop for the test session."""
-    loop = asyncio.get_event_loop_policy().new_event_loop()
+    import sys
+    if sys.platform == "win32":
+        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+    loop = asyncio.new_event_loop()
     yield loop
     loop.close()
 
 
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
-    """Create test database engine."""
+    """Create test database engine with SQLite (ARRAY columns stored as JSON text)."""
+    from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
+    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+    from sqlalchemy import String, Text
+
+    # Patch ARRAY and JSONB to work with SQLite
     engine = create_async_engine(
         TEST_DATABASE_URL,
-        poolclass=NullPool,
+        poolclass=StaticPool,
+        connect_args={"check_same_thread": False},
         future=True,
     )
+
+    # Replace PostgreSQL-specific types for SQLite
+    from app.models import base as models_base
+    import app.models.trader_profile
+    import app.models.advertisement
+    import app.models.saved_filters
+
+    # Create tables, replacing ARRAY with String and JSONB with Text
+    from sqlalchemy import MetaData, Table, Column, String as SAString, Text as SAText
+
     async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+        # Use render_as_batch for SQLite compatibility
+        await conn.run_sync(_create_tables_sqlite_compat)
+
     yield engine
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
     await engine.dispose()
 
 
+def _create_tables_sqlite_compat(connection):
+    """Create tables with SQLite-compatible types."""
+    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+    from sqlalchemy import String, Text
+
+    # Monkey-patch ARRAY and JSONB compilation for SQLite
+    from sqlalchemy.ext.compiler import compiles
+
+    @compiles(ARRAY, "sqlite")
+    def compile_array_sqlite(type_, compiler, **kw):
+        return "TEXT"
+
+    @compiles(JSONB, "sqlite")
+    def compile_jsonb_sqlite(type_, compiler, **kw):
+        return "TEXT"
+
+    Base.metadata.create_all(connection)
+
+
 @pytest_asyncio.fixture
 async def test_db(test_engine) -> AsyncGenerator[AsyncSession, None]:
     """Create a fresh database session for each test."""
-    async_session = async_sessionmaker(
+    session_factory = async_sessionmaker(
         test_engine, class_=AsyncSession, expire_on_commit=False
     )
-    async with async_session() as session:
+    async with session_factory() as session:
         yield session
-        # Rollback after test
         await session.rollback()
 
 
@@ -98,8 +138,20 @@ async def client(
     app.dependency_overrides[get_db] = override_get_db
     app.dependency_overrides[get_redis] = override_get_redis
 
+    # Patch rate limiter's redis to use mock
+    from app.middleware.rate_limiter import RateLimitMiddleware
+    for middleware in app.user_middleware:
+        if hasattr(middleware, 'cls') and middleware.cls == RateLimitMiddleware:
+            break
+
+    # Patch the module-level redis_client used by rate limiter
+    import app.middleware.rate_limiter as rl_module
+    original_redis = rl_module.redis_client
+    rl_module.redis_client = mock_redis_client
+
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac
 
+    rl_module.redis_client = original_redis
     app.dependency_overrides.clear()
