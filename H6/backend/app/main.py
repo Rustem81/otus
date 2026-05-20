@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from contextlib import asynccontextmanager
 from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
 
 import structlog
 from fastapi import FastAPI, Request
@@ -9,9 +9,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
+from app.api.v1.endpoints.health import router as health_router
 from app.api.v1.router import api_v1_router
 from app.core.config import get_settings
-from app.core.database import async_session, engine
+from app.core.database import engine
 from app.core.exceptions import AppException
 from app.core.logging_config import configure_logging
 from app.core.redis import redis_client
@@ -145,9 +146,7 @@ async def app_exception_handler(request: Request, exc: AppException) -> JSONResp
 app.include_router(api_v1_router)
 
 
-# --- Health check endpoints (moved to app/api/v1/endpoints/health.py) ---
-from app.api.v1.endpoints.health import router as health_router
-
+# --- Health check endpoints (see app/api/v1/endpoints/health.py) ---
 app.include_router(health_router)
 
 # --- Prometheus metrics (conditional on METRICS_ENABLED) ---

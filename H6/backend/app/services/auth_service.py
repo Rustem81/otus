@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import structlog
 from redis.asyncio import Redis
@@ -57,7 +57,7 @@ class AuthService:
         # Store in Redis (TTL 24 hours)
         await self._redis.setex(
             f"verify:{verification_token}",
-            int((expiry - datetime.now(timezone.utc)).total_seconds()),
+            int((expiry - datetime.now(UTC)).total_seconds()),
             user.id,
         )
 
@@ -108,7 +108,7 @@ class AuthService:
         # Create session
         session_token = generate_session_token()
         expiry = get_session_expiry()
-        ttl_seconds = int((expiry - datetime.now(timezone.utc)).total_seconds())
+        ttl_seconds = int((expiry - datetime.now(UTC)).total_seconds())
 
         # Store session in Redis
         await self._redis.hset(

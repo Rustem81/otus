@@ -1,16 +1,21 @@
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
+if TYPE_CHECKING:
+    from app.models.saved_filters import SavedFilters
+    from app.models.trader_profile import TraderProfile
 
-class UserRole(str, enum.Enum):
+
+class UserRole(StrEnum):
     USER = "USER"
     ADMIN = "ADMIN"
 

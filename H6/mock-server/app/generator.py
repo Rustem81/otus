@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import random
 import time
-from datetime import datetime
 
 from app.merchants import get_random_merchants, get_random_payment_methods
 

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -49,7 +49,7 @@ class AdvertisementRepository(BaseRepository[Advertisement]):
             .where(
                 Advertisement.currency == currency,
                 Advertisement.direction == direction,
-                Advertisement.is_active == True,
+                Advertisement.is_active.is_(True),
             )
             .order_by(Advertisement.price)
             .limit(limit)
@@ -69,7 +69,7 @@ class AdvertisementRepository(BaseRepository[Advertisement]):
         """Get active advertisements with filters."""
         stmt = select(Advertisement).where(
             Advertisement.currency == currency,
-            Advertisement.is_active == True,
+            Advertisement.is_active.is_(True),
         )
         stmt = stmt.options(selectinload(Advertisement.merchant))
 
@@ -98,12 +98,12 @@ class AdvertisementRepository(BaseRepository[Advertisement]):
 
         Returns number of marked advertisements.
         """
-        cutoff_time = datetime.now(timezone.utc) - timedelta(seconds=ttl_seconds)
+        cutoff_time = datetime.now(UTC) - timedelta(seconds=ttl_seconds)
 
         stmt = (
             update(Advertisement)
             .where(
-                Advertisement.is_active == True,
+                Advertisement.is_active.is_(True),
                 Advertisement.fetched_at < cutoff_time,
             )
             .values(is_active=False)
@@ -141,7 +141,7 @@ class AdvertisementRepository(BaseRepository[Advertisement]):
                 max_limit=max_limit,
                 payment_methods=payment_methods,
                 is_active=True,
-                fetched_at=datetime.now(timezone.utc),
+                fetched_at=datetime.now(UTC),
                 description=description,
             )
 
@@ -173,7 +173,7 @@ class AdvertisementRepository(BaseRepository[Advertisement]):
             .where(
                 Advertisement.currency == currency,
                 Advertisement.direction == direction,
-                Advertisement.is_active == True,
+                Advertisement.is_active.is_(True),
             )
         )
 

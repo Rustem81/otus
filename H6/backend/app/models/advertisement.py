@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-import enum
 import uuid
 from datetime import datetime
 from decimal import Decimal
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import (
     Boolean,
@@ -21,8 +22,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
+if TYPE_CHECKING:
+    from app.models.merchant import Merchant
 
-class Direction(str, enum.Enum):
+
+class Direction(StrEnum):
     BUY = "BUY"
     SELL = "SELL"
 

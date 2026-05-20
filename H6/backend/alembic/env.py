@@ -5,8 +5,9 @@ import sys
 from logging.config import fileConfig
 from pathlib import Path
 
-from alembic import context
 from sqlalchemy.ext.asyncio import create_async_engine
+
+from alembic import context
 
 # Add backend/ to sys.path so "app" package is importable
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))

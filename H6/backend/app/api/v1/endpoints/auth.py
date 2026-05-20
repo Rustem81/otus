@@ -2,13 +2,10 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
-from redis.asyncio import Redis
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.security import HTTPAuthorizationCredentials
 
-from app.api.dependencies import get_auth_service, get_current_active_user, bearer_scheme
-from app.core.database import get_db
-from app.core.redis import get_redis
+from app.api.dependencies import bearer_scheme, get_auth_service, get_current_active_user
 from app.models.user import User
 from app.schemas.auth import (
     ErrorResponse,
@@ -20,7 +17,6 @@ from app.schemas.auth import (
     VerifyEmailResponse,
 )
 from app.services.auth_service import AuthService
-from fastapi.security import HTTPAuthorizationCredentials
 
 router = APIRouter()
 

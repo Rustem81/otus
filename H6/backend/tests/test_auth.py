@@ -7,9 +7,8 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 from app.repositories.user_repository import UserRepository
-
 
 # =============================================================================
 # Registration Tests

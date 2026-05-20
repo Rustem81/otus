@@ -3,16 +3,15 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query
+from redis.asyncio import Redis
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.dependencies import get_current_active_user, require_user
 from app.core.database import get_db
 from app.core.redis import get_redis
-from redis.asyncio import Redis
 from app.models.advertisement import Direction
 from app.models.user import User
 from app.schemas.p2p import (
-    AdvertisementFilters,
     AdvertisementListResponse,
     AdvertisementResponse,
 )
@@ -28,19 +27,22 @@ def _direction_to_str(value: Direction | str) -> str:
     return value.value if isinstance(value, Direction) else value
 
 
+class AdvertisementService:
+    """Aggregates repository, scoring, and profitability for ad endpoints."""
+
+    def __init__(self, session: AsyncSession) -> None:
+        from app.repositories.advertisement_repository import AdvertisementRepository
+
+        self._repo = AdvertisementRepository(session)
+        self._ref_calc = ReferencePriceCalculator(session)
+        self._scoring = ScoringFacade(session)
+        self._profit = ProfitabilityService()
+
+
 async def get_advertisement_service(
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> "AdvertisementService":
+) -> AdvertisementService:
     """Factory dependency for AdvertisementService."""
-    from app.repositories.advertisement_repository import AdvertisementRepository
-
-    class AdvertisementService:
-        def __init__(self, session: AsyncSession) -> None:
-            self._repo = AdvertisementRepository(session)
-            self._ref_calc = ReferencePriceCalculator(session)
-            self._scoring = ScoringFacade(session)
-            self._profit = ProfitabilityService()
-
     return AdvertisementService(db)
 
 
@@ -66,9 +68,9 @@ async def list_advertisements(
     List advertisements with filtering and sorting.
     """
     from app.repositories.advertisement_repository import AdvertisementRepository
+    from app.services.profitability import ProfitabilityService
     from app.services.reference_price import ReferencePriceCalculator
     from app.services.scoring.facade import ScoringFacade
-    from app.services.profitability import ProfitabilityService
 
     ad_repo = AdvertisementRepository(db)
     ref_calc = ReferencePriceCalculator(db)
@@ -185,8 +187,9 @@ async def get_advertisement(
     """
     Get single advertisement details.
     """
-    from app.repositories.advertisement_repository import AdvertisementRepository
     from fastapi import HTTPException
+
+    from app.repositories.advertisement_repository import AdvertisementRepository
 
     ad_repo = AdvertisementRepository(db)
     ad = await ad_repo.get_by_id(ad_id)

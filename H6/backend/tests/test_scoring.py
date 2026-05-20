@@ -1,12 +1,13 @@
 """Tests for scoring module."""
 from __future__ import annotations
 
-import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from app.services.scoring.strategy import RuleBasedScoring, ScoringResult
-from app.services.scoring.facade import ScoringFacade
+import pytest
+
 from app.models.merchant import Merchant
+from app.services.scoring.facade import ScoringFacade
+from app.services.scoring.strategy import RuleBasedScoring, ScoringResult
 
 
 def create_merchant(

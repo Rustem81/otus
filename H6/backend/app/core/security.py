@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 import bcrypt
 
@@ -36,9 +36,9 @@ def generate_verification_token() -> str:
 
 def get_session_expiry() -> datetime:
     """Get session expiration time (24 hours from now)."""
-    return datetime.now(timezone.utc) + timedelta(hours=24)
+    return datetime.now(UTC) + timedelta(hours=24)
 
 
 def get_verification_expiry() -> datetime:
     """Get email verification token expiration time (24 hours from now)."""
-    return datetime.now(timezone.utc) + timedelta(hours=24)
+    return datetime.now(UTC) + timedelta(hours=24)

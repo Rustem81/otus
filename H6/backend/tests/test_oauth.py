@@ -9,10 +9,9 @@ from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.security import get_password_hash
-from app.models.user import User, UserRole
+from app.models.user import UserRole
 from app.repositories.user_repository import UserRepository
-from app.services.oauth_google import GoogleOAuthService, OAUTH_STATE_TTL
-
+from app.services.oauth_google import OAUTH_STATE_TTL, GoogleOAuthService
 
 # =============================================================================
 # 16.1 get_authorization_url generates state and stores in Redis

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import secrets
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import httpx
 import structlog
@@ -136,7 +136,7 @@ class GoogleOAuthService:
                 "user_id": user.id,
                 "role": user.role if isinstance(user.role, str) else user.role.value,
                 "email": user.email,
-                "created_at": datetime.now(timezone.utc).isoformat(),
+                "created_at": datetime.now(UTC).isoformat(),
             },
         )
         await self._redis.expire(session_key, 24 * 60 * 60)  # 24 hours

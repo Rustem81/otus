@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import enum
+from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from sqlalchemy import ForeignKey, Integer, Numeric, String
 from sqlalchemy.dialects.postgresql import ARRAY
@@ -8,8 +9,11 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
+if TYPE_CHECKING:
+    from app.models.user import User
 
-class RiskProfile(str, enum.Enum):
+
+class RiskProfile(StrEnum):
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"

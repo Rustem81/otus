@@ -4,7 +4,6 @@ from datetime import datetime
 
 from pydantic import BaseModel, Field
 
-
 # =============================================================================
 # Raw P2P Data Schemas (from p2p.army API)
 # =============================================================================

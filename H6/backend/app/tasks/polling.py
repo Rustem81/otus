@@ -2,8 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import random
-from datetime import datetime, timezone
-from typing import Any
+from datetime import UTC, datetime
 
 import structlog
 from redis.asyncio import Redis
@@ -11,12 +10,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.config import get_settings
 from app.core.database import async_session
+from app.core.metrics import p2p_ads_active_total, p2p_polling_duration_seconds
 from app.core.redis import redis_client
 from app.models.advertisement import Direction
 from app.models.polling_error import PollingError
 from app.services.p2p_processor import P2PDataProcessor
 from app.services.p2p_source import MockP2PClient, P2PArmyClient, P2PDataSource
-from app.core.metrics import p2p_ads_active_total, p2p_polling_duration_seconds
 from app.services.reference_price import ReferencePriceCalculator
 
 logger = structlog.get_logger()
@@ -40,9 +39,8 @@ class PollingErrorAggregator:
         message: str,
     ) -> None:
         """Log polling error to database."""
-        from sqlalchemy import insert
 
-        hour_bucket = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
+        hour_bucket = datetime.now(UTC).replace(minute=0, second=0, microsecond=0)
 
         error = PollingError(
             source=source,
@@ -189,7 +187,8 @@ async def _polling_loop() -> None:
                 p2p_polling_duration_seconds.observe(_poll_duration)
 
                 # Update active ads gauge
-                from sqlalchemy import select, func
+                from sqlalchemy import func, select
+
                 from app.models.advertisement import Advertisement
 
                 for dir_label in [Direction.BUY, Direction.SELL]:

@@ -4,7 +4,6 @@ from pydantic import BaseModel, Field, field_validator
 
 from app.models.trader_profile import RiskProfile
 
-
 # =============================================================================
 # Bank / Payment Method Schemas
 # =============================================================================

@@ -2,13 +2,12 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import AsyncGenerator
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
 
 import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 from redis.asyncio import Redis
-from sqlalchemy import event
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import StaticPool
 
@@ -55,9 +54,6 @@ def event_loop():
 @pytest_asyncio.fixture(scope="session")
 async def test_engine():
     """Create test database engine with SQLite (ARRAY columns stored as JSON text)."""
-    from sqlalchemy.dialects.sqlite.base import SQLiteTypeCompiler
-    from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-    from sqlalchemy import String, Text
 
     # Patch ARRAY and JSONB to work with SQLite
     engine = create_async_engine(
@@ -68,13 +64,8 @@ async def test_engine():
     )
 
     # Replace PostgreSQL-specific types for SQLite
-    from app.models import base as models_base
-    import app.models.trader_profile
-    import app.models.advertisement
-    import app.models.saved_filters
-
     # Create tables, replacing ARRAY with String and JSONB with Text
-    from sqlalchemy import MetaData, Table, Column, String as SAString, Text as SAText
+
 
     async with engine.begin() as conn:
         # Use render_as_batch for SQLite compatibility
@@ -90,7 +81,6 @@ async def test_engine():
 def _create_tables_sqlite_compat(connection):
     """Create tables with SQLite-compatible types."""
     from sqlalchemy.dialects.postgresql import ARRAY, JSONB
-    from sqlalchemy import String, Text
 
     # Monkey-patch ARRAY and JSONB compilation for SQLite
     from sqlalchemy.ext.compiler import compiles

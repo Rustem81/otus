@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import json
 from typing import TYPE_CHECKING
 
 from openai import AsyncOpenAI
@@ -56,7 +55,7 @@ class LLMExplainer:
         """Cache explanation in Redis with TTL."""
         await self._redis.setex(cache_key, CACHE_TTL, explanation)
 
-    def _build_prompt(self, merchant: "Merchant", scoring_result: ScoringResult) -> str:
+    def _build_prompt(self, merchant: Merchant, scoring_result: ScoringResult) -> str:
         """Build prompt for OpenAI."""
         speed_text = merchant.avg_payment_time or "неизвестна"
         if isinstance(speed_text, (int, float)):
@@ -73,7 +72,7 @@ class LLMExplainer:
 
     async def explain(
         self,
-        merchant: "Merchant",
+        merchant: Merchant,
         scoring_result: ScoringResult,
     ) -> str | None:
         """

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 
-class AppException(Exception):
+class AppException(Exception):  # noqa: N818
     """Base application exception with HTTP status code and error code."""
 
     def __init__(self, status_code: int, detail: str, error_code: str) -> None:

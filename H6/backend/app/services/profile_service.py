@@ -16,7 +16,6 @@ from app.schemas.profile import (
     TraderProfileUpdate,
 )
 
-
 # Predefined list of Russian banks and payment methods
 AVAILABLE_BANKS = [
     {"id": "sbp", "name": "СБП (Система быстрых платежей)", "category": "sbp"},

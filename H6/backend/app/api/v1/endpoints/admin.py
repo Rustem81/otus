@@ -1,9 +1,9 @@
 from __future__ import annotations
 
+from datetime import UTC, datetime, timedelta
 from typing import Annotated
-from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends
 from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -37,14 +37,14 @@ async def get_sources_status() -> SourceStatusResponse:
             name="MEXC RUB/USDT",
             type="pair",
             status="ok",
-            last_updated=datetime.now(timezone.utc),
+            last_updated=datetime.now(UTC),
         ),
         SourceStatus(
             id="p2p_army",
             name="p2p.army API",
             type="source",
             status="ok" if settings.P2P_DATA_SOURCE == "p2p_army" else "mock",
-            last_updated=datetime.now(timezone.utc),
+            last_updated=datetime.now(UTC),
         ),
     ]
 
@@ -68,7 +68,7 @@ async def toggle_source(
         name=source_id.replace("_", " ").upper(),
         type="pair",
         status="ok" if enabled else "disabled",
-        last_updated=datetime.now(timezone.utc),
+        last_updated=datetime.now(UTC),
     )
 
 
@@ -82,7 +82,7 @@ async def get_monitoring_stats(
     Admin only.
     """
     # Get error counts by hour
-    since = datetime.now(timezone.utc) - timedelta(hours=24)
+    since = datetime.now(UTC) - timedelta(hours=24)
 
     stmt = (
         select(
@@ -134,7 +134,7 @@ async def get_error_stats(
 
     Admin only.
     """
-    since = datetime.now(timezone.utc) - timedelta(hours=hours)
+    since = datetime.now(UTC) - timedelta(hours=hours)
 
     stmt = (
         select(
