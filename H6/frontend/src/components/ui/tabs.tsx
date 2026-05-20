@@ -85,4 +85,5 @@ function TabsContent({
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- shadcn: export variants with component
 export { Tabs, TabsList, TabsTrigger, TabsContent, tabsListVariants }
