@@ -52,6 +52,12 @@
 | SEC-13 | Medium | A05 | `main.py` | Нет ограничения размера request body. Потенциальный DoS через большие payload | ✅ Fixed | — |
 | SEC-14 | Low | A07 | `services/auth_service.py` | Session хранится в Redis с TTL 24h и продлевается при активности. Нет механизма logout-all (отмечено как TODO) | Documented | — |
 | SEC-15 | Info | A10 | `services/p2p_source/mock_client.py` | HTTP клиент обращается к настраиваемому URL. В production URL фиксирован через env var — SSRF риск минимален | ✅ OK | — |
+| SEC-16 | Medium | A06 | `pip` (venv) | pip 23.2.1 имеет 6 CVE (PYSEC-2023-228, CVE-2025-8869, CVE-2026-1703, CVE-2026-3219, CVE-2026-6357). Fix: обновить до pip>=26.1 | Accepted | — |
+| SEC-17 | High | A06 | `fast-uri` (npm) | Path traversal via percent-encoded dot segments (GHSA-q3j6-qgpj-74h6). Fix: `npm audit fix` | ✅ Fixed | — |
+| SEC-18 | Medium | A06 | `hono` (npm) | 5 уязвимостей: CSS injection, JWT validation, cache leakage, bodyLimit bypass, HTML injection. Fix: `npm audit fix` | ✅ Fixed | — |
+| SEC-19 | Medium | A06 | `postcss` (npm) | XSS via unescaped `</style>` in CSS stringify (GHSA-qx2v-qp2m-jg93). Fix: `npm audit fix` | ✅ Fixed | — |
+| SEC-20 | Medium | A06 | `brace-expansion` (npm) | Large numeric range defeats max DoS protection (GHSA-jxxr-4gwj-5jf2). Fix: `npm audit fix` | ✅ Fixed | — |
+| SEC-21 | Medium | A06 | `ip-address` (npm) | XSS in Address6 HTML-emitting methods (GHSA-v2v4-37r5-5v8g). Fix: `npm audit fix` | ✅ Fixed | — |
 
 ---
 
